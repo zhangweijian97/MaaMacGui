@@ -62,33 +62,43 @@ struct AutoRaiseSettingsView: View {
     // MARK: - 干员搜索
 
     private var searchSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TextField(String(localized: "搜索干员（支持拼音）"), text: $searchText)
-                .textFieldStyle(.roundedBorder)
+        TextField(String(localized: "搜索干员（支持拼音）"), text: $searchText)
+            .textFieldStyle(.roundedBorder)
+            // 建议列表是浮层：不占布局流，向下偏移一个输入框高度紧贴输入框底边之下；
+            // zIndex 抬高保证盖过页面后续内容。
+            .overlay(alignment: .bottom) {
+                suggestionList
+                    .offset(y: 24)
+            }
+            .zIndex(1)
+    }
 
-            let matches = searchMatches
-            if !matches.isEmpty {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(matches, id: \.self) { name in
-                            Button {
-                                selectCharacter(name)
-                            } label: {
-                                Text(name)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.vertical, 4)
-                            .padding(.horizontal, 8)
+    /// 匹配结果浮层：最多 30 条、限高 160 可滚动；不透明材质背景 + 阴影防下层内容透出。
+    @ViewBuilder private var suggestionList: some View {
+        let matches = searchMatches
+        if !matches.isEmpty {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(matches, id: \.self) { name in
+                        Button {
+                            selectCharacter(name)
+                        } label: {
+                            Text(name)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
                     }
                 }
-                .frame(maxHeight: 160)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
-                }
             }
+            .frame(maxWidth: .infinity, maxHeight: 160)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
+            }
+            .shadow(radius: 4)
         }
     }
 
