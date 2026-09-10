@@ -137,9 +137,12 @@ struct AutoRaiseSettingsView: View {
             }
             // 建议列表是浮层：不占布局流，从输入框顶边下移一个输入框高度起向下展开，
             // 不会盖住输入框（层序由外层搜索区的 zIndex 抬高）。
+            // 缩进对齐滚动区内容：本区在滚动区外，下方被滚动条占位窄 ~22，不缩会凸出。
+            .padding(.trailing, 22)
             .overlay(alignment: .top) {
                 suggestionList
                     .offset(y: suggestionListTopOffset)
+                    .padding(.trailing, 22)
             }
     }
 
