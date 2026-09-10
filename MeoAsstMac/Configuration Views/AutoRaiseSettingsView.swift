@@ -58,6 +58,9 @@ struct AutoRaiseSettingsView: View {
             }
             .padding(.horizontal)
             .padding(.top)
+            // 抬整层搜索区到滚动区之上：zIndex 只对直接父容器的兄弟生效，
+            // 挂在 TextField 上盖不过滚动区（待养成画在浮层上，文字叠加）。
+            .zIndex(1)
             // 重新编辑搜索文本（与当前选中干员不一致）才恢复建议；
             // selectCharacter 里也会改 searchText，须避免把刚置的关闭态冲掉。
             .onChange(of: searchText) { _, newValue in
@@ -136,12 +139,11 @@ struct AutoRaiseSettingsView: View {
             }
             .padding(.trailing, 22)
             // 建议列表是浮层：不占布局流，从输入框顶边下移一个输入框高度起向下展开，
-            // 不会盖住输入框；zIndex 抬高保证盖过页面后续内容。
+            // 不会盖住输入框（层序由外层搜索区的 zIndex 抬高）。
             .overlay(alignment: .top) {
                 suggestionList
                     .offset(y: suggestionListTopOffset)
             }
-            .zIndex(1)
     }
 
     /// 清空按钮：输入非空才显示；点击清搜索文本、收起面板（浮层随空匹配自然消失）。
