@@ -7,6 +7,8 @@ import SwiftUI
 
 struct AutoRaiseSettingsView: View {
     @Environment(NewViewModel.self) private var viewModel
+    /// 浮层实底用固定色：系统动态色在 vibrant 上下文会解析出半透明变体（用户截图实证文字穿透）。
+    @Environment(\.colorScheme) private var colorScheme
 
     @Binding var config: AutoRaiseConfiguration
 
@@ -197,8 +199,8 @@ struct AutoRaiseSettingsView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: listHeight)
-            // macOS 26 的 controlBackgroundColor 带 alpha（玻璃材质），下拉列表需实底：textBackgroundColor 无透明度。
-            .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+            // 实底必须用固定色：系统动态色（control/textBackground）在此上下文解析出半透明变体（用户截图实证文字穿透）。
+            .background(colorScheme == .dark ? Color.black : Color.white, in: RoundedRectangle(cornerRadius: 6))
             .overlay {
                 RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
             }
