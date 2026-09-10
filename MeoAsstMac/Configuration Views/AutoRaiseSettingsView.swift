@@ -27,10 +27,8 @@ struct AutoRaiseSettingsView: View {
     @ScaledMetric(relativeTo: .body) private var suggestionRowHeight: CGFloat = 24
     /// 建议浮层顶部偏移：输入框高度 + 间隙，让列表从输入框下方展开不盖输入框。
     @ScaledMetric(relativeTo: .body) private var suggestionListTopOffset: CGFloat = 30
-    /// 键盘 ↑/↓ 在建议列表中的高亮下标（循环回绕）。
+    /// 键盘 ↑/↓ 在建议列表中的高亮下标（循环回绕）；鼠标悬停同步到此（单一高亮源）。
     @State private var selectedIndex = 0
-    /// 悬停中的建议行（与键盘高亮共用行背景样式）。
-    @State private var hoverName: String?
     /// 清空按钮悬停态。
     @State private var clearButtonHover = false
 
@@ -186,14 +184,15 @@ struct AutoRaiseSettingsView: View {
                                 .padding(.horizontal, 8)
                                 .contentShape(Rectangle())
                                 .background(
-                                    hoverName == name || index == selectedSuggestionIndex(matches)
+                                    index == selectedSuggestionIndex(matches)
                                         ? Color.accentColor.opacity(0.15)
                                         : Color.clear
                                 )
                         }
                         .buttonStyle(.plain)
                         .onHover { hovering in
-                            hoverName = hovering ? name : nil
+                            // 悬停即成为当前选中（单一高亮源，同系统菜单）。
+                            if hovering { selectedIndex = index }
                         }
                     }
                 }
