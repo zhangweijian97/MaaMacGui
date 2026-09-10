@@ -143,6 +143,8 @@ struct AutoRaiseSettingsView: View {
             .overlay(alignment: .top) {
                 suggestionList
                     .offset(y: suggestionListTopOffset)
+                    // 尾部缩 22 = 宿主给 ✕ 的预留，浮层宽对齐输入框可见宽。
+                    .padding(.trailing, 22)
             }
     }
 
