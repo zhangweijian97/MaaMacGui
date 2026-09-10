@@ -45,6 +45,10 @@ extension MAAHandle {
             return try appendTask(config: config)
         case .mall(let config):
             return try appendTask(config: config)
+        case .autoRaise:
+            // 自动养成只读骨架：core 无 AutoRaise 任务类型，实际下发 Depot（仓库识别），
+            // 仅读取仓库库存，不改动游戏状态。
+            return try appendTask(type: .Depot, params: "")
         case .award(let config):
             return try appendTask(config: config)
         case .roguelike(let config):
