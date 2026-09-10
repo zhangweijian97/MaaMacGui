@@ -132,19 +132,16 @@ struct AutoRaiseSettingsView: View {
                     return .ignored
                 }
             }
-            // 快速清空：占输入框右侧留出的 22pt 空隙，不压文字。
+            // 快速清空：✕ 在输入框内部右侧（同标准搜索框），不外占宽度。
             .overlay(alignment: .trailing) {
                 clearSearchButton
                     .padding(.trailing, 4)
             }
-            .padding(.trailing, 22)
             // 建议列表是浮层：不占布局流，从输入框顶边下移一个输入框高度起向下展开，
             // 不会盖住输入框（层序由外层搜索区的 zIndex 抬高）。
             .overlay(alignment: .top) {
                 suggestionList
                     .offset(y: suggestionListTopOffset)
-                    // 尾部缩 22 = 宿主给 ✕ 的预留，浮层宽对齐输入框可见宽。
-                    .padding(.trailing, 22)
             }
     }
 
