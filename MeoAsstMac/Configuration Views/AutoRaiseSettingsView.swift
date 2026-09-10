@@ -23,6 +23,14 @@ struct AutoRaiseSettingsView: View {
     @State private var suggestionsDismissed = false
     /// 建议行高，随系统字体缩放。
     @ScaledMetric(relativeTo: .body) private var suggestionRowHeight: CGFloat = 24
+    /// 建议浮层顶部偏移：输入框高度 + 间隙，让列表从输入框下方展开不盖输入框。
+    @ScaledMetric(relativeTo: .body) private var suggestionListTopOffset: CGFloat = 30
+    /// 键盘 ↑/↓ 在建议列表中的高亮下标（循环回绕）。
+    @State private var selectedIndex = 0
+    /// 悬停中的建议行（与键盘高亮共用行背景样式）。
+    @State private var hoverName: String?
+    /// 清空按钮悬停态。
+    @State private var clearButtonHover = false
 
     /// 滚动锚点：目标面板顶部。
     private static let goalPanelAnchor = "auto-raise-goal-panel"
@@ -54,6 +62,7 @@ struct AutoRaiseSettingsView: View {
                 if newValue != panelName {
                     suggestionsDismissed = false
                 }
+                selectedIndex = 0
             }
 
             ScrollViewReader { proxy in
@@ -97,13 +106,62 @@ struct AutoRaiseSettingsView: View {
     private var searchSection: some View {
         TextField(String(localized: "搜索干员（支持拼音）"), text: $searchText)
             .textFieldStyle(.roundedBorder)
-            // 建议列表是浮层：不占布局流，向下偏移一个输入框高度紧贴输入框底边之下；
-            // zIndex 抬高保证盖过页面后续内容。
-            .overlay(alignment: .bottom) {
+            // ↑/↓ 循环移动高亮，Enter 选中，Esc 关浮层（已关则交还默认行为）。
+            .onKeyPress(keys: [.upArrow, .downArrow, .return, .escape]) { press in
+                let matches = searchMatches
+                guard !suggestionsDismissed, !matches.isEmpty else { return .ignored }
+                switch press.key {
+                case .upArrow:
+                    selectedIndex = (selectedSuggestionIndex(matches) - 1 + matches.count) % matches.count
+                    return .handled
+                case .downArrow:
+                    selectedIndex = (selectedSuggestionIndex(matches) + 1) % matches.count
+                    return .handled
+                case .return:
+                    selectCharacter(matches[selectedSuggestionIndex(matches)])
+                    return .handled
+                case .escape:
+                    suggestionsDismissed = true
+                    return .handled
+                default:
+                    return .ignored
+                }
+            }
+            // 快速清空：占输入框右侧留出的 22pt 空隙，不压文字。
+            .overlay(alignment: .trailing) {
+                clearSearchButton
+                    .padding(.trailing, 4)
+            }
+            .padding(.trailing, 22)
+            // 建议列表是浮层：不占布局流，从输入框顶边下移一个输入框高度起向下展开，
+            // 不会盖住输入框；zIndex 抬高保证盖过页面后续内容。
+            .overlay(alignment: .top) {
                 suggestionList
-                    .offset(y: 24)
+                    .offset(y: suggestionListTopOffset)
             }
             .zIndex(1)
+    }
+
+    /// 清空按钮：输入非空才显示；点击清搜索文本、收起面板（浮层随空匹配自然消失）。
+    @ViewBuilder private var clearSearchButton: some View {
+        if !searchText.isEmpty {
+            Button {
+                searchText = ""
+                panelName = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(clearButtonHover ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { clearButtonHover = $0 }
+        }
+    }
+
+    /// 键盘高亮下标钳制在当前匹配范围内。
+    private func selectedSuggestionIndex(_ matches: [String]) -> Int {
+        guard !matches.isEmpty else { return 0 }
+        return min(selectedIndex, matches.count - 1)
     }
 
     /// 匹配结果浮层：选中后关闭、重新编辑恢复；最多 30 条。
@@ -115,23 +173,31 @@ struct AutoRaiseSettingsView: View {
             let listHeight = min(CGFloat(matches.count) * suggestionRowHeight, 200)
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(matches, id: \.self) { name in
+                    ForEach(Array(matches.enumerated()), id: \.element) { index, name in
                         Button {
                             selectCharacter(name)
                         } label: {
                             Text(name)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .frame(height: suggestionRowHeight)
+                                .padding(.horizontal, 8)
                                 .contentShape(Rectangle())
+                                .background(
+                                    hoverName == name || index == selectedSuggestionIndex(matches)
+                                        ? Color.accentColor.opacity(0.15)
+                                        : Color.clear
+                                )
                         }
                         .buttonStyle(.plain)
-                        .padding(.horizontal, 8)
+                        .onHover { hovering in
+                            hoverName = hovering ? name : nil
+                        }
                     }
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: listHeight)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
             .overlay {
                 RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
             }
