@@ -341,15 +341,16 @@ struct AutoRaiseSettingsView: View {
             ForEach(0..<3, id: \.self) { index in
                 masteryRow(
                     index: index,
-                    slotAvailable: index < slots.count && slots[index] != nil
+                    slotAvailable: index < slots.count && slots[index] != nil,
+                    label: character?.skillLabel(index + 1) ?? masteryName(index)
                 )
             }
         }
     }
 
-    private func masteryRow(index: Int, slotAvailable: Bool) -> some View {
+    private func masteryRow(index: Int, slotAvailable: Bool, label: String) -> some View {
         HStack(spacing: 8) {
-            Toggle(masteryName(index), isOn: masteryEnabledBinding(index: index))
+            Toggle(label, isOn: masteryEnabledBinding(index: index))
                 .disabled(!slotAvailable)
             Text("从")
             Picker(String(localized: "专精起始档位"), selection: masteryFromBinding(index: index)) {
@@ -451,7 +452,8 @@ struct AutoRaiseSettingsView: View {
     }
 
     private func characterGroup(name: String, entries: [AutoRaisePlan.Entry]) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        let character = AutoRaiseDemandTable.shared[name]
+        return VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Button {
                     selectCharacter(name)
@@ -472,7 +474,7 @@ struct AutoRaiseSettingsView: View {
             }
             ForEach(entries, id: \.self) { entry in
                 HStack {
-                    Text(entry.summaryText)
+                    Text(entry.summaryText(character: character))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .padding(.leading, 12)
@@ -729,14 +731,17 @@ private enum AutoRaiseSearchIndex {
 
 /// 待养成行的行动短语。
 private extension AutoRaisePlan.Entry {
-    var summaryText: String {
+    /// 专精短语优先查表显示技能真名（如「三技能（真银斩）专精 0 → 3」）；
+    /// 干员无表条目时回退序号标签。
+    func summaryText(character: AutoRaiseCharacterDemand?) -> String {
         switch action {
         case .elite:
             return String(localized: "精英化 → \(to)")
         case .skills:
             return String(localized: "技能 \(from) → \(to)")
         case .mastery:
-            return String(localized: "\(skillLabel)专精 \(from) → \(to)")
+            let label = character.map { $0.skillLabel(skill ?? 1) } ?? skillLabel
+            return String(localized: "\(label)专精 \(from) → \(to)")
         }
     }
 

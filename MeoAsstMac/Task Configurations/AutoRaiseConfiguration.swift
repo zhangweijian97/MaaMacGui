@@ -318,6 +318,8 @@ struct AutoRaiseGap: Sendable {
 /// 单个干员的逐级养成需求（`mac_需求表.json` 的一条），材料为逐级增量。
 struct AutoRaiseCharacterDemand: Codable, Sendable {
     let id: String
+    /// 按技能序号（一/二/三技能）排列的技能名，显示层专用；无技能干员为空数组。
+    let skillNames: [String]?
     /// 下标 i = 升到第 i+1 阶精英化的增量。
     let elite: [[MaterialCost]]?
     /// 下标 j = 技能从 j+1 升到 j+2 级的增量。
@@ -327,6 +329,15 @@ struct AutoRaiseCharacterDemand: Codable, Sendable {
 }
 
 extension AutoRaiseCharacterDemand {
+    /// 技能序号（1 起）的显示名：表里有真名则「三技能（真银斩）」，否则回退序号标签。
+    func skillLabel(_ number: Int) -> String {
+        let ordinal = [String(localized: "一技能"), String(localized: "二技能"), String(localized: "三技能")][
+            min(max(number - 1, 0), 2)]
+        guard let names = skillNames, names.indices.contains(number - 1), !names[number - 1].isEmpty else {
+            return ordinal
+        }
+        return String(localized: "\(ordinal)（\(names[number - 1])）")
+    }
     /// from/to 区间需求：Elite 取前 to 阶；Skills 取第 from+1 到 to 级（from=1 即全量）；
     /// Mastery 取第 K 技能第 from+1 到 to 级。维度为 null 返回 nil（无数据，区别于空数组）。
     func costs(action: AutoRaiseAction, skill: Int?, from: Int, to: Int) -> [MaterialCost]? {
