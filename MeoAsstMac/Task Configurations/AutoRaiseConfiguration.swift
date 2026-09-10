@@ -223,22 +223,25 @@ struct AutoRaiseDemand: Sendable {
     /// 该养成线无数据（需求表对应维度为 null），报告为「无数据」不当 0。
     var noData = [String]()
 
-    /// 缺口 = 需求 − 库存：差值 > 0 的条目按数量降序，其余计为已满足。
+    /// 缺口 = 需求 − 库存：差值 > 0 的条目按数量降序，其余计为已满足（同样携带明细）。
     func gap(against inventory: [String: Int]) -> AutoRaiseGap {
         var shortages = [AutoRaiseGap.Item]()
-        var satisfied = 0
+        var satisfied = [AutoRaiseGap.Item]()
         for (itemId, required) in items {
             let have = inventory[itemId] ?? 0
+            let item = AutoRaiseGap.Item(itemId: itemId, required: required, have: have)
             if required > have {
-                shortages.append(.init(itemId: itemId, required: required, have: have))
+                shortages.append(item)
             } else {
-                satisfied += 1
+                satisfied.append(item)
             }
         }
         // 缺口降序；同量缺口按材料 id 升序，保证报告稳定。
         shortages.sort { lhs, rhs in
             lhs.shortfall == rhs.shortfall ? lhs.itemId < rhs.itemId : lhs.shortfall > rhs.shortfall
         }
+        // 已满足按材料 id 升序（名称异步到达，用 id 才稳定）。
+        satisfied.sort { $0.itemId < $1.itemId }
         return AutoRaiseGap(shortages: shortages, satisfied: satisfied)
     }
 }
@@ -255,7 +258,10 @@ struct AutoRaiseGap: Sendable {
     }
 
     var shortages = [Item]()
-    var satisfied = 0
+    var satisfied = [Item]()
+
+    /// 需求材料总种数 = 缺口 + 已满足。
+    var total: Int { shortages.count + satisfied.count }
 }
 
 // MARK: - 需求表

@@ -74,11 +74,9 @@ struct AutoRaiseSettingsView: View {
             if let demand {
                 let gap = demand.gap(against: inventory)
                 VStack(alignment: .leading, spacing: 8) {
-                    if gap.satisfied > 0 {
-                        Text("\(gap.satisfied) 种材料已满足")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("共 \(gap.total) 种材料 · 缺 \(gap.shortages.count) 种")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
 
                     if gap.shortages.isEmpty {
                         Text("无缺口")
@@ -88,17 +86,18 @@ struct AutoRaiseSettingsView: View {
                         Text("材料缺口")
                             .font(.subheadline)
                         List(gap.shortages) { item in
-                            HStack {
-                                Text(itemName(item.itemId))
-                                Spacer()
-                                Text("需 \(item.required) / 有 \(item.have)")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                Text("×\(item.shortfall)")
-                                    .monospacedDigit()
-                            }
+                            materialRow(item, showsShortfall: true)
                         }
                         .frame(minHeight: 100)
+                    }
+
+                    if !gap.satisfied.isEmpty {
+                        Text("已满足 \(gap.satisfied.count) 种")
+                            .font(.subheadline)
+                        List(gap.satisfied) { item in
+                            materialRow(item, showsShortfall: false)
+                        }
+                        .frame(minHeight: 60)
                     }
 
                     ForEach(demand.unknownCharacters, id: \.self) { name in
@@ -125,6 +124,21 @@ struct AutoRaiseSettingsView: View {
             return name
         }
         return itemId
+    }
+
+    /// 缺口行与已满足行同构：名称 + 需/有，缺口行额外显示缺口量。
+    @ViewBuilder private func materialRow(_ item: AutoRaiseGap.Item, showsShortfall: Bool) -> some View {
+        HStack {
+            Text(itemName(item.itemId))
+            Spacer()
+            Text("需 \(item.required) / 有 \(item.have)")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            if showsShortfall {
+                Text("×\(item.shortfall)")
+                    .monospacedDigit()
+            }
+        }
     }
 
     // MARK: - 材料名

@@ -1,6 +1,38 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "共 %lld 种材料 · 缺 %lld 种" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld materials in total · %lld missing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "共 %lld 种材料 · 缺 %lld 种"
+          }
+        }
+      }
+    },
+    "已满足 %lld 种" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld satisfied"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已满足 %lld 种"
+          }
+        }
+      }
+    },
     "自动养成" : {
       "localizations" : {
         "en" : {
@@ -285,22 +317,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld 条合法"
-          }
-        }
-      }
-    },
-    "%lld 种材料已满足" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld materials satisfied"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld 种材料已满足"
           }
         }
       }
