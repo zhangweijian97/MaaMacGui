@@ -19,6 +19,13 @@ struct AutoRaiseSettingsView: View {
     @State private var panelName: String?
     /// 目标设置面板的草稿值（添加/更新时写回计划）。
     @State private var draft = AutoRaiseGoalDraft()
+    /// 选中干员后关闭建议浮层（全名仍会命中自身匹配，不关会常驻遮挡面板顶部）。
+    @State private var suggestionsDismissed = false
+    /// 建议行高，随系统字体缩放。
+    @ScaledMetric(relativeTo: .body) private var suggestionRowHeight: CGFloat = 24
+
+    /// 滚动锚点：目标面板顶部。
+    private static let goalPanelAnchor = "auto-raise-goal-panel"
 
     private var plan: AutoRaisePlan {
         AutoRaisePlan(json: config.planJson)
@@ -41,27 +48,43 @@ struct AutoRaiseSettingsView: View {
             }
             .padding(.horizontal)
             .padding(.top)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let panelName {
-                        goalPanel(name: panelName)
-                    }
-
-                    planListSection
-
-                    Divider()
-
-                    debugSection
-
-                    Divider()
-
-                    Text("缺口报告")
-                        .font(.headline)
-
-                    gapReport
+            // 重新编辑搜索文本（与当前选中干员不一致）才恢复建议；
+            // selectCharacter 里也会改 searchText，须避免把刚置的关闭态冲掉。
+            .onChange(of: searchText) { _, newValue in
+                if newValue != panelName {
+                    suggestionsDismissed = false
                 }
-                .padding()
+            }
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if let panelName {
+                            goalPanel(name: panelName)
+                        }
+
+                        planListSection
+
+                        Divider()
+
+                        debugSection
+
+                        Divider()
+
+                        Text("缺口报告")
+                            .font(.headline)
+
+                        gapReport
+                    }
+                    .padding()
+                    // 小窗兜底：面板展开时滚到其顶部，保证完整进入视野。
+                    .onChange(of: panelName) { _, newName in
+                        guard newName != nil else { return }
+                        withAnimation {
+                            proxy.scrollTo(Self.goalPanelAnchor, anchor: .top)
+                        }
+                    }
+                }
             }
         }
         .task(id: AutoRaiseReportKey(items: viewModel.depot?.items, plan: config.planJson)) {
@@ -83,10 +106,13 @@ struct AutoRaiseSettingsView: View {
             .zIndex(1)
     }
 
-    /// 匹配结果浮层：最多 30 条、限高 160 可滚动；不透明材质背景 + 阴影防下层内容透出。
+    /// 匹配结果浮层：选中后关闭、重新编辑恢复；最多 30 条。
+    /// 高度显式 = 行数×行高封顶 200：overlay 只向子视图提议宿主（输入框）尺寸，
+    /// 仅用 maxHeight 会被压成单行视口，第二条起不可见。
     @ViewBuilder private var suggestionList: some View {
         let matches = searchMatches
-        if !matches.isEmpty {
+        if !matches.isEmpty, !suggestionsDismissed {
+            let listHeight = min(CGFloat(matches.count) * suggestionRowHeight, 200)
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(matches, id: \.self) { name in
@@ -95,15 +121,16 @@ struct AutoRaiseSettingsView: View {
                         } label: {
                             Text(name)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(height: suggestionRowHeight)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .padding(.vertical, 4)
                         .padding(.horizontal, 8)
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: 200)
+            .frame(maxWidth: .infinity)
+            .frame(height: listHeight)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
             .overlay {
                 RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
@@ -119,10 +146,11 @@ struct AutoRaiseSettingsView: View {
         return Array(AutoRaiseSearchIndex.matching(query).sorted().prefix(30))
     }
 
-    /// 选中干员：输入框补全全名，展开目标面板（已在计划中则回填现值）。
+    /// 选中干员：输入框补全全名，关闭建议浮层，展开目标面板（已在计划中则回填现值）。
     private func selectCharacter(_ name: String) {
-        searchText = name
         panelName = name
+        searchText = name
+        suggestionsDismissed = true
         let entries = plan.entries.filter { $0.name == name }
         draft = AutoRaiseGoalDraft(entries: entries)
     }
@@ -159,6 +187,7 @@ struct AutoRaiseSettingsView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
         }
+        .id(Self.goalPanelAnchor)
     }
 
     @ViewBuilder private func eliteSection(_ character: AutoRaiseCharacterDemand?) -> some View {
