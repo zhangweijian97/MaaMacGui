@@ -197,7 +197,8 @@ struct AutoRaiseSettingsView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: listHeight)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+            // macOS 26 的 controlBackgroundColor 带 alpha（玻璃材质），下拉列表需实底：textBackgroundColor 无透明度。
+            .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
             .overlay {
                 RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
             }
