@@ -197,14 +197,17 @@ struct AutoRaiseSettingsView: View {
                     }
                 }
             }
+            // 隐藏 ScrollView 自带玻璃材质（macOS 26 默认，叠在实底上呈半透明）。
+            .scrollContentBackground(.hidden)
             .frame(maxWidth: .infinity)
             .frame(height: listHeight)
-            // 实底必须用固定色：系统动态色（control/textBackground）在此上下文解析出半透明变体（用户截图实证文字穿透）。
-            .background(colorScheme == .dark ? Color.black : Color.white, in: RoundedRectangle(cornerRadius: 6))
+            // 实底固定色 + ViewBuilder fill 形态（`in:` 变体疑似不渲染，像素实证穿透）。
+            .background {
+                RoundedRectangle(cornerRadius: 6).fill(colorScheme == .dark ? Color.black : Color.white)
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
             }
-            .shadow(radius: 4)
         }
     }
 
