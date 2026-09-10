@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 自动养成（只读骨架）。
+/// 自动养成。
 ///
 /// core 没有 AutoRaise 任务类型：运行本任务时实际下发给 core 的是 Depot（仓库识别）——
 /// 只读取仓库库存、不改动游戏状态；配置页据库存报告计划的材料缺口。
@@ -13,8 +13,11 @@ import Foundation
 struct AutoRaiseConfiguration: MAATaskConfiguration {
     var type: MAATaskType { .AutoRaise }
 
-    /// 养成计划 JSON，条目语义同 core 的 AutoRaisePlan：
-    /// `[{"name": "银灰", "action": "Elite", "target": 2, "skill": 3}]`
+    /// 养成计划 JSON：条目列表，每条 = 一个养成目标（行动单元）。
+    /// `[{"name": "银灰", "action": "Elite", "to": 2},
+    ///    {"name": "银灰", "action": "Skills", "from": 4, "to": 7},
+    ///    {"name": "银灰", "action": "Mastery", "skill": 3, "from": 0, "to": 3}]`
+    /// 同干员同一条养成线（name + action + skill）只保留一条。
     var planJson: String = "[]"
 
     /// 合成完成后删除已完成条目（与 WPF 同名功能对齐的字段；骨架阶段不下发 core，不参与执行）。
@@ -75,7 +78,7 @@ enum AutoRaiseAction: String, CaseIterable, Sendable {
         }
     }
 
-    /// 该动作允许的 target 区间。
+    /// 该动作允许的 to（目标档位）区间。
     var targetRange: ClosedRange<Int> {
         switch self {
         case .elite:
@@ -90,11 +93,21 @@ enum AutoRaiseAction: String, CaseIterable, Sendable {
 
 /// 解析并校验后的养成计划：合法条目 + 逐条问题。
 struct AutoRaisePlan: Hashable, Sendable {
+    /// 单个养成目标（行动单元）。
     struct Entry: Hashable, Sendable {
         let name: String
         let action: AutoRaiseAction
-        let target: Int
+        /// 起始档位：Elite 无 from（恒 0）；Skills 1-6；Mastery 0-2。
+        let from: Int
+        /// 目标档位：Elite 1-2；Skills 2-7；Mastery 1-3。
+        let to: Int
+        /// 专精作用的技能序号（1 起），仅 Mastery 有。
         let skill: Int?
+
+        /// 养成线唯一键（同干员同线去重与删除定位用）。
+        var lineKey: String {
+            "\(name)|\(action.rawValue)|\(skill ?? 0)"
+        }
     }
 
     struct Issue: Hashable, Sendable {
@@ -156,10 +169,25 @@ struct AutoRaisePlan: Hashable, Sendable {
             return
         }
 
-        guard let target = object["target"] as? Int, action.targetRange.contains(target) else {
+        guard let to = object["to"] as? Int, action.targetRange.contains(to) else {
             let range = action.targetRange
-            fail(String(localized: "\(action.title)的 target 应为 \(range.lowerBound)-\(range.upperBound) 的整数"))
+            fail(String(localized: "\(action.title)的 to 应为 \(range.lowerBound)-\(range.upperBound) 的整数"))
             return
+        }
+
+        // from：Elite 无（恒 0）；Skills/Mastery 缺省取全量起点，须小于 to。
+        var from = 0
+        if action != .elite {
+            let lowerBound = action == .skills ? 1 : 0
+            if let rawFrom = object["from"] as? Int {
+                guard rawFrom >= lowerBound, rawFrom < to else {
+                    fail(String(localized: "\(action.title)的 from 应为 \(lowerBound)-\(to - 1) 的整数"))
+                    return
+                }
+                from = rawFrom
+            } else {
+                from = lowerBound
+            }
         }
 
         var skill: Int?
@@ -171,39 +199,60 @@ struct AutoRaisePlan: Hashable, Sendable {
             skill = rawSkill
         }
 
-        entries.append(.init(name: name, action: action, target: target, skill: skill))
+        let entry = Entry(name: name, action: action, from: from, to: to, skill: skill)
+        // 同干员同线只保留一条：后写覆盖首次出现的位置。
+        if let existing = entries.firstIndex(where: { $0.lineKey == entry.lineKey }) {
+            entries[existing] = entry
+        } else {
+            entries.append(entry)
+        }
+    }
+
+    /// 表单持久化与 debug 视图共用的规范化 pretty JSON（2 空格缩进，键排序）。
+    var canonicalJson: String {
+        let array = entries.map(\.jsonObject)
+        guard !array.isEmpty,
+            let data = try? JSONSerialization.data(withJSONObject: array, options: [.prettyPrinted, .sortedKeys]),
+            let text = String(data: data, encoding: .utf8)
+        else {
+            return "[]"
+        }
+        return text
+    }
+}
+
+extension AutoRaisePlan.Entry {
+    var jsonObject: [String: Any] {
+        var object: [String: Any] = ["name": name, "action": action.rawValue]
+        if let skill {
+            object["skill"] = skill
+        }
+        if action != .elite {
+            object["from"] = from
+        }
+        object["to"] = to
+        return object
     }
 }
 
 // MARK: - 需求与缺口
 
 extension AutoRaisePlan {
-    /// 养成线：同名同线取最大 target（不叠加），不同线叠加；专精线由技能区分。
-    private struct Line: Hashable {
-        let name: String
-        let action: AutoRaiseAction
-        let skill: Int?
-    }
-
-    /// 计划累计需求：按需求表逐级累加，汇总为「材料 id → 数量」。
+    /// 计划累计需求：逐条按 from/to 区间查需求表增量，汇总为「材料 id → 数量」。
+    /// 解析已保证同线唯一（后写覆盖），无需再聚合；排序只为让报告输出稳定。
     func demand(in table: [String: AutoRaiseCharacterDemand]) -> AutoRaiseDemand {
-        var demands = [Line: Int]()
-        for entry in entries {
-            let line = Line(name: entry.name, action: entry.action, skill: entry.action == .mastery ? entry.skill : nil)
-            demands[line] = max(demands[line] ?? 0, entry.target)
-        }
-
         var demand = AutoRaiseDemand()
-        // 排序只为让报告输出稳定（累加与顺序无关）。
-        for (line, target) in demands.sorted(by: { ($0.key.name, $0.key.action.rawValue) < ($1.key.name, $1.key.action.rawValue) }) {
-            guard let character = table[line.name] else {
-                if !demand.unknownCharacters.contains(line.name) {
-                    demand.unknownCharacters.append(line.name)
+        for entry in entries.sorted(by: {
+            ($0.name, $0.action.rawValue, $0.skill ?? 0) < ($1.name, $1.action.rawValue, $1.skill ?? 0)
+        }) {
+            guard let character = table[entry.name] else {
+                if !demand.unknownCharacters.contains(entry.name) {
+                    demand.unknownCharacters.append(entry.name)
                 }
                 continue
             }
-            guard let costs = character.costs(action: line.action, target: target, skill: line.skill) else {
-                demand.noData.append(String(localized: "\(line.name)：\(line.action.title)无数据"))
+            guard let costs = character.costs(action: entry.action, skill: entry.skill, from: entry.from, to: entry.to) else {
+                demand.noData.append(String(localized: "\(entry.name)：\(entry.action.title)无数据"))
                 continue
             }
             for cost in costs {
@@ -278,22 +327,30 @@ struct AutoRaiseCharacterDemand: Codable, Sendable {
 }
 
 extension AutoRaiseCharacterDemand {
-    /// 逐级累加：Elite 取前 N 阶、Skills 取前 N-1 级、Mastery 取第 K 技能前 N 级。
-    /// 维度为 null 返回 nil（无数据，区别于空数组）。
-    func costs(action: AutoRaiseAction, target: Int, skill: Int?) -> [MaterialCost]? {
+    /// from/to 区间需求：Elite 取前 to 阶；Skills 取第 from+1 到 to 级（from=1 即全量）；
+    /// Mastery 取第 K 技能第 from+1 到 to 级。维度为 null 返回 nil（无数据，区别于空数组）。
+    func costs(action: AutoRaiseAction, skill: Int?, from: Int, to: Int) -> [MaterialCost]? {
         switch action {
         case .elite:
             guard let elite else { return nil }
-            return elite.prefix(target).flatMap { $0 }
+            return Self.slice(elite, lower: 0, upper: to)
         case .skills:
             guard let skills else { return nil }
-            return skills.prefix(target - 1).flatMap { $0 }
+            return Self.slice(skills, lower: from - 1, upper: to - 1)
         case .mastery:
             guard let skill, let mastery, mastery.indices.contains(skill - 1), let levels = mastery[skill - 1] else {
                 return nil
             }
-            return levels.prefix(target).flatMap { $0 }
+            return Self.slice(levels, lower: from, upper: to)
         }
+    }
+
+    /// 逐级增量数组的区间合计：取下标 [lower, upper) 段，等价 prefix(upper) − prefix(lower)。
+    private static func slice(_ levels: [[MaterialCost]], lower: Int, upper: Int) -> [MaterialCost] {
+        let start = max(0, lower)
+        let end = min(upper, levels.count)
+        guard start < end else { return [] }
+        return levels[start..<end].flatMap { $0 }
     }
 }
 

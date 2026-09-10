@@ -13,6 +13,13 @@ struct AutoRaiseSettingsView: View {
     @State private var itemNames = [String: String]()
     @State private var nameTaskToken: UUID?
 
+    /// 干员搜索框内容。
+    @State private var searchText = ""
+    /// 当前展开目标设置面板的干员。
+    @State private var panelName: String?
+    /// 目标设置面板的草稿值（添加/更新时写回计划）。
+    @State private var draft = AutoRaiseGoalDraft()
+
     private var plan: AutoRaisePlan {
         AutoRaisePlan(json: config.planJson)
     }
@@ -27,14 +34,17 @@ struct AutoRaiseSettingsView: View {
             Text("养成计划")
                 .font(.headline)
 
-            TextEditor(text: $config.planJson)
-                .font(.system(.body, design: .monospaced))
-                .frame(minHeight: 120)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
-                }
+            searchSection
 
-            planValidation
+            if let panelName {
+                goalPanel(name: panelName)
+            }
+
+            planListSection
+
+            Divider()
+
+            debugSection
 
             Divider()
 
@@ -49,21 +59,394 @@ struct AutoRaiseSettingsView: View {
         }
     }
 
-    // MARK: - 计划验证
+    // MARK: - 干员搜索
 
-    @ViewBuilder private var planValidation: some View {
-        if plan.issues.isEmpty {
-            Text("\(plan.entries.count) 条合法")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        } else {
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(plan.issues, id: \.self) { issue in
-                    Text(issue.message)
-                        .font(.callout)
-                        .foregroundStyle(.red)
+    private var searchSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField(String(localized: "搜索干员（支持拼音）"), text: $searchText)
+                .textFieldStyle(.roundedBorder)
+
+            let matches = searchMatches
+            if !matches.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(matches, id: \.self) { name in
+                            Button {
+                                selectCharacter(name)
+                            } label: {
+                                Text(name)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                        }
+                    }
+                }
+                .frame(maxHeight: 160)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
                 }
             }
+        }
+    }
+
+    /// 匹配结果（中文名子串 / 全拼片段 / 首字母前缀），按名称排序取前 30。
+    private var searchMatches: [String] {
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !query.isEmpty else { return [] }
+        return Array(AutoRaiseSearchIndex.matching(query).sorted().prefix(30))
+    }
+
+    /// 选中干员：输入框补全全名，展开目标面板（已在计划中则回填现值）。
+    private func selectCharacter(_ name: String) {
+        searchText = name
+        panelName = name
+        let entries = plan.entries.filter { $0.name == name }
+        draft = AutoRaiseGoalDraft(entries: entries)
+    }
+
+    // MARK: - 目标设置面板（布局对照明日方舟工具箱的养成计划弹窗）
+
+    private func goalPanel(name: String) -> some View {
+        let tableCharacter = AutoRaiseDemandTable.shared[name]
+        let inPlan = plan.entries.contains { $0.name == name }
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(name)
+                .font(.headline)
+
+            eliteSection(tableCharacter)
+            skillsSection(tableCharacter)
+            masterySection(tableCharacter)
+
+            if tableCharacter == nil {
+                Text("需求表无此干员，无法设置养成目标")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+
+            HStack {
+                Spacer()
+                Button(inPlan ? String(localized: "更新") : String(localized: "添加")) {
+                    commitDraft()
+                }
+                .disabled(tableCharacter == nil)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay {
+            RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
+        }
+    }
+
+    @ViewBuilder private func eliteSection(_ character: AutoRaiseCharacterDemand?) -> some View {
+        let available = character?.elite != nil
+        HStack(spacing: 16) {
+            Toggle("精英化 1", isOn: eliteBinding(target: 1))
+                .disabled(!available)
+            Toggle("精英化 2", isOn: eliteBinding(target: 2))
+                .disabled(!available || (character?.elite?.count ?? 0) < 2)
+        }
+    }
+
+    /// 勾选状态 = 目标阶 ≥ N（勾 2 隐含勾 1；取消 1 连带取消 2）。
+    private func eliteBinding(target: Int) -> Binding<Bool> {
+        Binding {
+            draft.eliteTarget >= target
+        } set: { isOn in
+            if isOn {
+                draft.eliteTarget = max(draft.eliteTarget, target)
+            } else if draft.eliteTarget >= target {
+                draft.eliteTarget = target - 1
+            }
+        }
+    }
+
+    @ViewBuilder private func skillsSection(_ character: AutoRaiseCharacterDemand?) -> some View {
+        // skills 增量阶数（6 = 等级 1-7）；无数据则整行禁用，选项退化为静态区间。
+        let hasData = !(character?.skills ?? []).isEmpty
+        let maxLevel = hasData ? min((character?.skills?.count ?? 0) + 1, 7) : 0
+        // 选项恒为合法闭区间（lower ≤ upper），禁用态也不崩。
+        let fromOptions = hasData ? Array(1...max(1, min(maxLevel - 1, 6))) : Array(1...6)
+        let toUpper = hasData ? maxLevel : 7
+        let toOptions = Array((draft.skills.from + 1)...max(draft.skills.from + 1, toUpper))
+        HStack(spacing: 8) {
+            Toggle("技能", isOn: $draft.skills.isEnabled)
+                .disabled(!hasData)
+            Text("从")
+            Picker(String(localized: "技能起始等级"), selection: skillsFromBinding) {
+                ForEach(fromOptions, id: \.self) { level in
+                    Text("\(level)").tag(level)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(!hasData)
+            Text("到")
+            Picker(String(localized: "技能目标等级"), selection: skillsToBinding(toUpper: toUpper)) {
+                ForEach(toOptions, id: \.self) { level in
+                    Text("\(level)").tag(level)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(!hasData)
+        }
+    }
+
+    /// 改起始等级即视为启用该目标，并把目标等级抬到至少 +1（from < to 结构保证）。
+    private var skillsFromBinding: Binding<Int> {
+        Binding {
+            draft.skills.from
+        } set: { newValue in
+            draft.skills.isEnabled = true
+            draft.skills.from = newValue
+            if draft.skills.to <= newValue {
+                draft.skills.to = min(newValue + 1, 7)
+            }
+        }
+    }
+
+    private func skillsToBinding(toUpper: Int) -> Binding<Int> {
+        Binding {
+            max(draft.skills.to, draft.skills.from + 1)
+        } set: { newValue in
+            draft.skills.isEnabled = true
+            draft.skills.to = min(max(newValue, draft.skills.from + 1), max(2, toUpper))
+        }
+    }
+
+    @ViewBuilder private func masterySection(_ character: AutoRaiseCharacterDemand?) -> some View {
+        let slots = character?.mastery ?? []
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(0..<3, id: \.self) { index in
+                masteryRow(
+                    index: index,
+                    slotAvailable: index < slots.count && slots[index] != nil
+                )
+            }
+        }
+    }
+
+    private func masteryRow(index: Int, slotAvailable: Bool) -> some View {
+        HStack(spacing: 8) {
+            Toggle(masteryName(index), isOn: masteryEnabledBinding(index: index))
+                .disabled(!slotAvailable)
+            Text("从")
+            Picker(String(localized: "专精起始档位"), selection: masteryFromBinding(index: index)) {
+                ForEach(0...2, id: \.self) { rank in
+                    Text("\(rank)").tag(rank)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(!slotAvailable)
+            Text("到")
+            Picker(String(localized: "专精目标档位"), selection: masteryToBinding(index: index)) {
+                ForEach((draft.masteries[index].from + 1)...3, id: \.self) { rank in
+                    Text("\(rank)").tag(rank)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(!slotAvailable)
+        }
+    }
+
+    private func masteryName(_ index: Int) -> String {
+        [String(localized: "一技能"), String(localized: "二技能"), String(localized: "三技能")][index]
+    }
+
+    /// 改起始档位即视为启用该目标，并把目标档位抬到至少 +1（from < to 结构保证）。
+    private func masteryFromBinding(index: Int) -> Binding<Int> {
+        Binding {
+            draft.masteries[index].from
+        } set: { newValue in
+            draft.masteries[index].isEnabled = true
+            draft.masteries[index].from = newValue
+            if draft.masteries[index].to <= newValue {
+                draft.masteries[index].to = min(newValue + 1, 3)
+            }
+        }
+    }
+
+    private func masteryToBinding(index: Int) -> Binding<Int> {
+        Binding {
+            max(draft.masteries[index].to, draft.masteries[index].from + 1)
+        } set: { newValue in
+            draft.masteries[index].isEnabled = true
+            draft.masteries[index].to = max(newValue, draft.masteries[index].from + 1)
+        }
+    }
+
+    private func masteryEnabledBinding(index: Int) -> Binding<Bool> {
+        Binding {
+            draft.masteries[index].isEnabled
+        } set: { isOn in
+            draft.masteries[index].isEnabled = isOn
+        }
+    }
+
+    // MARK: - 待养成列表（按干员分组）
+
+    private var planListSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("待养成")
+                .font(.subheadline)
+
+            let grouped = Dictionary(grouping: plan.entries, by: \.name)
+            if grouped.isEmpty {
+                Text("尚未添加干员，搜索选择后设置目标")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(grouped.keys.sorted(), id: \.self) { name in
+                        characterGroup(name: name, entries: grouped[name]!.sorted(by: entryOrder))
+                    }
+                }
+            }
+        }
+    }
+
+    /// 组内排序：精英化 → 技能 → 专精（按技能序号）。
+    private func entryOrder(_ lhs: AutoRaisePlan.Entry, _ rhs: AutoRaisePlan.Entry) -> Bool {
+        switch (lhs.action, rhs.action) {
+        case (.elite, .elite):
+            return false
+        case (.elite, _):
+            return true
+        case (_, .elite):
+            return false
+        case (.skills, .skills):
+            return false
+        case (.skills, _):
+            return true
+        case (_, .skills):
+            return false
+        case (.mastery, .mastery):
+            return (lhs.skill ?? 0) < (rhs.skill ?? 0)
+        }
+    }
+
+    private func characterGroup(name: String, entries: [AutoRaisePlan.Entry]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Button {
+                    selectCharacter(name)
+                } label: {
+                    Text(name)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Button {
+                    removeCharacter(name)
+                } label: {
+                    Text("删除")
+                        .font(.callout)
+                }
+                .buttonStyle(.borderless)
+            }
+            ForEach(entries, id: \.self) { entry in
+                HStack {
+                    Text(entry.summaryText)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 12)
+                    Spacer()
+                    Button {
+                        removeEntry(entry)
+                    } label: {
+                        Text("删除")
+                            .font(.callout)
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+        }
+    }
+
+    // MARK: - 计划读写
+
+    /// 以表单草稿替换该干员的全部计划条目，回写规范化 JSON。
+    /// 需求表无数据的维度不写入（面板对应行本就禁用，此处兜底防手改 JSON 残留勾选）。
+    private func commitDraft() {
+        guard let name = panelName else { return }
+        let tableCharacter = AutoRaiseDemandTable.shared[name]
+        updatePlan { parsed in
+            parsed.entries.removeAll { $0.name == name }
+            if draft.eliteTarget > 0, tableCharacter?.elite != nil {
+                parsed.entries.append(.init(name: name, action: .elite, from: 0, to: draft.eliteTarget, skill: nil))
+            }
+            if draft.skills.isEnabled, tableCharacter?.skills != nil {
+                parsed.entries.append(.init(name: name, action: .skills, from: draft.skills.from, to: draft.skills.to, skill: nil))
+            }
+            let slots = tableCharacter?.mastery ?? []
+            for (index, line) in draft.masteries.enumerated() where line.isEnabled {
+                guard index < slots.count, slots[index] != nil else { continue }
+                parsed.entries.append(.init(name: name, action: .mastery, from: line.from, to: line.to, skill: index + 1))
+            }
+        }
+    }
+
+    private func removeCharacter(_ name: String) {
+        updatePlan { $0.entries.removeAll { $0.name == name } }
+        if panelName == name {
+            panelName = nil
+        }
+    }
+
+    private func removeEntry(_ entry: AutoRaisePlan.Entry) {
+        updatePlan { $0.entries.removeAll { $0.lineKey == entry.lineKey } }
+    }
+
+    private func updatePlan(_ transform: (inout AutoRaisePlan) -> Void) {
+        var parsed = plan
+        transform(&parsed)
+        config.planJson = parsed.canonicalJson
+    }
+
+    // MARK: - 计划 JSON（debug 视图，最终用户界面不保留）
+
+    private var debugSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("养成计划 JSON（debug）")
+                .font(.subheadline)
+
+            ScrollView {
+                Text(debugJsonText)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .frame(minHeight: 120)
+            .overlay {
+                RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
+            }
+
+            planIssues
+        }
+    }
+
+    /// 常态显示表单生成的规范化 JSON；手改坏 JSON 时原样展示原文便于排查。
+    private var debugJsonText: String {
+        let parsed = plan
+        return parsed.isUnparseable ? config.planJson : parsed.canonicalJson
+    }
+
+    @ViewBuilder private var planIssues: some View {
+        ForEach(plan.issues, id: \.self) { issue in
+            Text(issue.message)
+                .font(.callout)
+                .foregroundStyle(.red)
         }
     }
 
@@ -158,6 +541,101 @@ struct AutoRaiseSettingsView: View {
         }
         itemNames = names
         nameTaskToken = nil
+    }
+}
+
+/// 目标设置面板的草稿状态；一行 = 一个 from/to 区间 + 启用勾选。
+private struct AutoRaiseGoalDraft: Hashable {
+    struct Line: Hashable {
+        var isEnabled = false
+        var from: Int
+        var to: Int
+    }
+
+    /// 精英化目标阶（0 = 不练，1/2 = 目标精英化阶）。
+    var eliteTarget = 0
+    /// 技能等级目标（1-7），默认 1 → 7。
+    var skills = Line(from: 1, to: 7)
+    /// 三行专精目标（0-3），下标 = 技能序号 − 1，默认 0 → 3。
+    var masteries = [Line(from: 0, to: 3), Line(from: 0, to: 3), Line(from: 0, to: 3)]
+
+    init() {}
+
+    /// 从该干员已有计划条目回填（按钮呈「更新」态）。
+    init(entries: [AutoRaisePlan.Entry]) {
+        for entry in entries {
+            switch entry.action {
+            case .elite:
+                eliteTarget = entry.to
+            case .skills:
+                skills = Line(isEnabled: true, from: entry.from, to: entry.to)
+            case .mastery:
+                if let skill = entry.skill, masteries.indices.contains(skill - 1) {
+                    masteries[skill - 1] = Line(isEnabled: true, from: entry.from, to: entry.to)
+                }
+            }
+        }
+    }
+}
+
+/// 干员搜索索引：中文名 → 全拼 / 首字母（系统 toLatin 变换 + 去声调，惰性建立后缓存）。
+private enum AutoRaiseSearchIndex {
+    struct Entry {
+        let fullPinyin: String
+        let initials: String
+    }
+
+    static let entries: [String: Entry] = {
+        var result = [String: Entry]()
+        for name in AutoRaiseDemandTable.shared.keys {
+            guard let latin = name.applyingTransform(.toLatin, reverse: false) else { continue }
+            let syllables = latin.lowercased()
+                .folding(options: .diacriticInsensitive, locale: nil)
+                .components(separatedBy: .whitespacesAndNewlines)
+                .filter { !$0.isEmpty }
+            result[name] = Entry(
+                fullPinyin: syllables.joined(),
+                initials: syllables.compactMap(\.first).map(String.init).joined()
+            )
+        }
+        return result
+    }()
+
+    /// 匹配规则：中文名子串 / 全拼片段 / 首字母前缀（如 lyyh → 凛御银灰）。
+    static func matching(_ query: String) -> [String] {
+        entries.filter { name, entry in
+            name.lowercased().contains(query)
+                || entry.fullPinyin.contains(query)
+                || entry.initials.hasPrefix(query)
+        }
+        .map(\.key)
+    }
+}
+
+/// 待养成行的行动短语。
+private extension AutoRaisePlan.Entry {
+    var summaryText: String {
+        switch action {
+        case .elite:
+            return String(localized: "精英化 → \(to)")
+        case .skills:
+            return String(localized: "技能 \(from) → \(to)")
+        case .mastery:
+            return String(localized: "\(skillLabel)专精 \(from) → \(to)")
+        }
+    }
+
+    var skillLabel: String {
+        switch skill {
+        case 1:
+            return String(localized: "一技能")
+        case 2:
+            return String(localized: "二技能")
+        case 3:
+            return String(localized: "三技能")
+        default:
+            return String(localized: "第 \(skill ?? 0) 技能")
+        }
     }
 }
 
