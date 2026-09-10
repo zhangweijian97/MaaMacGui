@@ -31,29 +31,39 @@ struct AutoRaiseSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("养成计划")
-                .font(.headline)
+            // 搜索区钉顶：宿主链（MAADetail/TaskDetail）无人提供滚动容器，
+            // 标题+搜索框留在滚动区外，建议浮层位置才不受下方内容展开影响。
+            VStack(alignment: .leading, spacing: 12) {
+                Text("养成计划")
+                    .font(.headline)
 
-            searchSection
-
-            if let panelName {
-                goalPanel(name: panelName)
+                searchSection
             }
+            .padding(.horizontal)
+            .padding(.top)
 
-            planListSection
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let panelName {
+                        goalPanel(name: panelName)
+                    }
 
-            Divider()
+                    planListSection
 
-            debugSection
+                    Divider()
 
-            Divider()
+                    debugSection
 
-            Text("缺口报告")
-                .font(.headline)
+                    Divider()
 
-            gapReport
+                    Text("缺口报告")
+                        .font(.headline)
+
+                    gapReport
+                }
+                .padding()
+            }
         }
-        .padding()
         .task(id: AutoRaiseReportKey(items: viewModel.depot?.items, plan: config.planJson)) {
             await updateItemNames()
         }
@@ -93,7 +103,7 @@ struct AutoRaiseSettingsView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: 160)
+            .frame(maxWidth: .infinity, maxHeight: 200)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
             .overlay {
                 RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
