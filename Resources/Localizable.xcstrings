@@ -3066,6 +3066,28 @@
       }
     },
     "info": {},
+    "level 应为 1-90 的整数": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "level should be an integer between 1 and 90"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "level should be an integer between 1 and 90"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "level 应为 1-90 的整数"
+          }
+        }
+      }
+    },
     "name 缺失或为空": {
       "localizations": {
         "en": {
@@ -3228,6 +3250,28 @@
       }
     },
     "不支持此版本PlayCover": {},
+    "不练": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不练"
+          }
+        }
+      }
+    },
     "不购物": {
       "localizations": {
         "ko": {
@@ -5696,7 +5740,51 @@
       }
     },
     "目标常乐节点": {},
+    "目标等级": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target Level"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target Level"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标等级"
+          }
+        }
+      }
+    },
     "目标襁褓动物": {},
+    "目标阶段": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target Stage"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target Stage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标阶段"
+          }
+        }
+      }
+    },
     "盾": {
       "localizations": {
         "ko": {
@@ -5869,6 +5957,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "精英化 → %lld"
+          }
+        }
+      }
+    },
+    "精英化 → %lld · %lld 级": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elite → %lld · Lv. %lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elite → %lld · Lv. %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "精英化 → %lld · %lld 级"
           }
         }
       }
