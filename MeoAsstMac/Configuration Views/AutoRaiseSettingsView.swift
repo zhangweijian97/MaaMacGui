@@ -265,27 +265,56 @@ struct AutoRaiseSettingsView: View {
         .id(Self.goalPanelAnchor)
     }
 
+    /// 精英化终点式录入：目标阶段 + 目标等级双下拉（形态对照技能/专精行的弹出式菜单）。
+    /// 等级上限随阶段联动（精1→80、精2→90），切阶段时重置为该阶段满级；不练时等级下拉禁用。
     @ViewBuilder private func eliteSection(_ character: AutoRaiseCharacterDemand?) -> some View {
         let available = character?.elite != nil
+        let maxElite = character?.elite?.count ?? 0
         HStack(spacing: 16) {
-            Toggle("精英化 1", isOn: eliteBinding(target: 1))
-                .disabled(!available)
-            Toggle("精英化 2", isOn: eliteBinding(target: 2))
-                .disabled(!available || (character?.elite?.count ?? 0) < 2)
+            Picker(String(localized: "目标阶段"), selection: eliteStageBinding) {
+                Text("不练").tag(0)
+                Text("精英化 1").tag(1)
+                    .disabled(!available || maxElite < 1)
+                Text("精英化 2").tag(2)
+                    .disabled(!available || maxElite < 2)
+            }
+            .pickerStyle(.menu)
+            .disabled(!available)
+
+            Picker(String(localized: "目标等级"), selection: eliteLevelBinding) {
+                ForEach(1...eliteLevelUpperBound, id: \.self) { level in
+                    Text("\(level)").tag(level)
+                }
+            }
+            .pickerStyle(.menu)
+            .disabled(!available || draft.eliteTarget == 0)
         }
     }
 
-    /// 勾选状态 = 目标阶 ≥ N（勾 2 隐含勾 1；取消 1 连带取消 2）。
-    private func eliteBinding(target: Int) -> Binding<Bool> {
+    /// 目标阶段：切到某阶段时目标等级自动重置为该阶段满级（默认选中满级）。
+    private var eliteStageBinding: Binding<Int> {
         Binding {
-            draft.eliteTarget >= target
-        } set: { isOn in
-            if isOn {
-                draft.eliteTarget = max(draft.eliteTarget, target)
-            } else if draft.eliteTarget >= target {
-                draft.eliteTarget = target - 1
+            draft.eliteTarget
+        } set: { newValue in
+            draft.eliteTarget = newValue
+            if newValue > 0 {
+                draft.eliteLevel = autoRaiseEliteMaxLevel(for: newValue)
             }
         }
+    }
+
+    /// 目标等级：读写均钳制在 1…当前阶段上限内（回填旧数据超上限时的兜底）。
+    private var eliteLevelBinding: Binding<Int> {
+        Binding {
+            min(max(draft.eliteLevel, 1), eliteLevelUpperBound)
+        } set: { newValue in
+            draft.eliteLevel = min(max(newValue, 1), eliteLevelUpperBound)
+        }
+    }
+
+    /// 当前阶段的等级选项上限；不练（0）时下拉已禁用，按精1 取 80 保证选项恒合法。
+    private var eliteLevelUpperBound: Int {
+        autoRaiseEliteMaxLevel(for: draft.eliteTarget)
     }
 
     @ViewBuilder private func skillsSection(_ character: AutoRaiseCharacterDemand?) -> some View {
@@ -510,15 +539,21 @@ struct AutoRaiseSettingsView: View {
         updatePlan { parsed in
             parsed.entries.removeAll { $0.name == name }
             if draft.eliteTarget > 0, tableCharacter?.elite != nil {
-                parsed.entries.append(.init(name: name, action: .elite, from: 0, to: draft.eliteTarget, skill: nil))
+                let stage = draft.eliteTarget
+                parsed.entries.append(
+                    .init(
+                        name: name, action: .elite, from: 0, to: stage, skill: nil,
+                        level: min(max(draft.eliteLevel, 1), autoRaiseEliteMaxLevel(for: stage))
+                    )
+                )
             }
             if draft.skills.isEnabled, tableCharacter?.skills != nil {
-                parsed.entries.append(.init(name: name, action: .skills, from: draft.skills.from, to: draft.skills.to, skill: nil))
+                parsed.entries.append(.init(name: name, action: .skills, from: draft.skills.from, to: draft.skills.to, skill: nil, level: nil))
             }
             let slots = tableCharacter?.mastery ?? []
             for (index, line) in draft.masteries.enumerated() where line.isEnabled {
                 guard index < slots.count, slots[index] != nil else { continue }
-                parsed.entries.append(.init(name: name, action: .mastery, from: line.from, to: line.to, skill: index + 1))
+                parsed.entries.append(.init(name: name, action: .mastery, from: line.from, to: line.to, skill: index + 1, level: nil))
             }
         }
     }
@@ -670,6 +705,11 @@ struct AutoRaiseSettingsView: View {
     }
 }
 
+/// 精英化各阶段的等级上限（精1→80、精2→90）：统一上限，不做低星干员差异化（已接受的简化）。
+private func autoRaiseEliteMaxLevel(for stage: Int) -> Int {
+    stage >= 2 ? 90 : 80
+}
+
 /// 目标设置面板的草稿状态；一行 = 一个 from/to 区间 + 启用勾选。
 private struct AutoRaiseGoalDraft: Hashable {
     struct Line: Hashable {
@@ -680,6 +720,8 @@ private struct AutoRaiseGoalDraft: Hashable {
 
     /// 精英化目标阶（0 = 不练，1/2 = 目标精英化阶）。
     var eliteTarget = 0
+    /// 精英化目标等级（精1 上限 80、精2 上限 90）；旧条目无 level 回填该阶段满级。
+    var eliteLevel = 90
     /// 技能等级目标（1-7），默认 1 → 7。
     var skills = Line(from: 1, to: 7)
     /// 三行专精目标（0-3），下标 = 技能序号 − 1，默认 0 → 3。
@@ -693,6 +735,7 @@ private struct AutoRaiseGoalDraft: Hashable {
             switch entry.action {
             case .elite:
                 eliteTarget = entry.to
+                eliteLevel = entry.level ?? autoRaiseEliteMaxLevel(for: entry.to)
             case .skills:
                 skills = Line(isEnabled: true, from: entry.from, to: entry.to)
             case .mastery:
@@ -745,6 +788,9 @@ private extension AutoRaisePlan.Entry {
     func summaryText(character: AutoRaiseCharacterDemand?) -> String {
         switch action {
         case .elite:
+            if let level {
+                return String(localized: "精英化 → \(to) · \(level) 级")
+            }
             return String(localized: "精英化 → \(to)")
         case .skills:
             return String(localized: "技能 \(from) → \(to)")

@@ -14,7 +14,7 @@ struct AutoRaiseConfiguration: MAATaskConfiguration {
     var type: MAATaskType { .AutoRaise }
 
     /// 养成计划 JSON：条目列表，每条 = 一个养成目标（行动单元）。
-    /// `[{"name": "银灰", "action": "Elite", "to": 2},
+    /// `[{"name": "银灰", "action": "Elite", "to": 2, "level": 90},
     ///    {"name": "银灰", "action": "Skills", "from": 4, "to": 7},
     ///    {"name": "银灰", "action": "Mastery", "skill": 3, "from": 0, "to": 3}]`
     /// 同干员同一条养成线（name + action + skill）只保留一条。
@@ -103,6 +103,8 @@ struct AutoRaisePlan: Hashable, Sendable {
         let to: Int
         /// 专精作用的技能序号（1 起），仅 Mastery 有。
         let skill: Int?
+        /// 目标干员等级（1-90），仅 Elite 有；旧条目缺省 nil（升级耗经验书/龙门币，不进材料需求）。
+        let level: Int?
 
         /// 养成线唯一键（同干员同线去重与删除定位用）。
         var lineKey: String {
@@ -175,6 +177,16 @@ struct AutoRaisePlan: Hashable, Sendable {
             return
         }
 
+        // level：仅 Elite 携带的目标干员等级（1-90），缺省 nil（兼容旧条目）。
+        var level: Int?
+        if action == .elite, object["level"] != nil {
+            guard let rawLevel = object["level"] as? Int, (1...90).contains(rawLevel) else {
+                fail(String(localized: "level 应为 1-90 的整数"))
+                return
+            }
+            level = rawLevel
+        }
+
         // from：Elite 无（恒 0）；Skills/Mastery 缺省取全量起点，须小于 to。
         var from = 0
         if action != .elite {
@@ -199,7 +211,7 @@ struct AutoRaisePlan: Hashable, Sendable {
             skill = rawSkill
         }
 
-        let entry = Entry(name: name, action: action, from: from, to: to, skill: skill)
+        let entry = Entry(name: name, action: action, from: from, to: to, skill: skill, level: level)
         // 同干员同线只保留一条：后写覆盖首次出现的位置。
         if let existing = entries.firstIndex(where: { $0.lineKey == entry.lineKey }) {
             entries[existing] = entry
@@ -231,6 +243,9 @@ extension AutoRaisePlan.Entry {
             object["from"] = from
         }
         object["to"] = to
+        if action == .elite, let level {
+            object["level"] = level
+        }
         return object
     }
 }
