@@ -20,6 +20,7 @@
 		831D2489293C9CE3005AC1CE /* MaaCore.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 831D2488293C9CE3005AC1CE /* MaaCore.xcframework */; };
 		831D248A293C9CE3005AC1CE /* MaaCore.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 831D2488293C9CE3005AC1CE /* MaaCore.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8320E6642CFE004D00F4BC95 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 8320E6632CFE004D00F4BC95 /* Localizable.xcstrings */; };
+		AE1A00062E9A1000000000A6 /* mac_需求表.json in Resources */ = {isa = PBXBuildFile; fileRef = AE1A00052E9A1000000000A5 /* mac_需求表.json */; };
 		83264A2629EBC9C10074E33A /* ReclamationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A2529EBC9C10074E33A /* ReclamationSettingsView.swift */; };
 		83264A2929EBEBB00074E33A /* MAATaskConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A2829EBEBB00074E33A /* MAATaskConfiguration.swift */; };
 		83264A2B29EBED780074E33A /* StartupConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A2A29EBED780074E33A /* StartupConfiguration.swift */; };
@@ -27,6 +28,7 @@
 		83264A2F29EBEE140074E33A /* RecruitConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A2E29EBEE140074E33A /* RecruitConfiguration.swift */; };
 		83264A3129EBEE3C0074E33A /* InfrastConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3029EBEE3C0074E33A /* InfrastConfiguration.swift */; };
 		83264A3329EBEE680074E33A /* MallConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3229EBEE680074E33A /* MallConfiguration.swift */; };
+		AE1A00022E9A1000000000A2 /* AutoRaiseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE1A00012E9A1000000000A1 /* AutoRaiseConfiguration.swift */; };
 		83264A3529EBEE8D0074E33A /* AwardConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3429EBEE8D0074E33A /* AwardConfiguration.swift */; };
 		83264A3B29EC0F2E0074E33A /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3A29EC0F2E0074E33A /* LogView.swift */; };
 		83264A3E29EC22DE0074E33A /* MAAViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3D29EC22DE0074E33A /* MAAViewModel.swift */; };
@@ -101,6 +103,7 @@
 		83D061F62CF81519008F0140 /* FileLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D061F52CF81519008F0140 /* FileLogger.swift */; };
 		83D3283128F2E7A600018D10 /* RecruitSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D3283028F2E7A600018D10 /* RecruitSettingsView.swift */; };
 		83D3283328F2F1BE00018D10 /* MallSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D3283228F2F1BE00018D10 /* MallSettingsView.swift */; };
+		AE1A00042E9A1000000000A4 /* AutoRaiseSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE1A00032E9A1000000000A3 /* AutoRaiseSettingsView.swift */; };
 		83D3283728F2FA5B00018D10 /* InfrastSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D3283628F2FA5B00018D10 /* InfrastSettingsView.swift */; };
 		83D3283928F3048E00018D10 /* RoguelikeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D3283828F3048E00018D10 /* RoguelikeSettingsView.swift */; };
 		83DD50B729BE393C000E84E7 /* UpdaterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83DD50B629BE385A000E84E7 /* UpdaterSettingsView.swift */; };
@@ -159,6 +162,7 @@
 		83191C8E3040AF0D00576DC0 /* TCPConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TCPConnection.swift; sourceTree = "<group>"; };
 		831D2488293C9CE3005AC1CE /* MaaCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MaaCore.xcframework; path = ../../build/MaaCore.xcframework; sourceTree = "<group>"; };
 		8320E6632CFE004D00F4BC95 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		AE1A00052E9A1000000000A5 /* mac_需求表.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "mac_需求表.json"; sourceTree = "<group>"; };
 		83264A2529EBC9C10074E33A /* ReclamationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReclamationSettingsView.swift; sourceTree = "<group>"; };
 		83264A2829EBEBB00074E33A /* MAATaskConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MAATaskConfiguration.swift; sourceTree = "<group>"; };
 		83264A2A29EBED780074E33A /* StartupConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartupConfiguration.swift; sourceTree = "<group>"; };
@@ -166,6 +170,7 @@
 		83264A2E29EBEE140074E33A /* RecruitConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruitConfiguration.swift; sourceTree = "<group>"; };
 		83264A3029EBEE3C0074E33A /* InfrastConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfrastConfiguration.swift; sourceTree = "<group>"; };
 		83264A3229EBEE680074E33A /* MallConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MallConfiguration.swift; sourceTree = "<group>"; };
+		AE1A00012E9A1000000000A1 /* AutoRaiseConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoRaiseConfiguration.swift; sourceTree = "<group>"; };
 		83264A3429EBEE8D0074E33A /* AwardConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AwardConfiguration.swift; sourceTree = "<group>"; };
 		83264A3A29EC0F2E0074E33A /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		83264A3D29EC22DE0074E33A /* MAAViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MAAViewModel.swift; sourceTree = "<group>"; };
@@ -242,6 +247,7 @@
 		83D061F52CF81519008F0140 /* FileLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileLogger.swift; sourceTree = "<group>"; };
 		83D3283028F2E7A600018D10 /* RecruitSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecruitSettingsView.swift; sourceTree = "<group>"; };
 		83D3283228F2F1BE00018D10 /* MallSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MallSettingsView.swift; sourceTree = "<group>"; };
+		AE1A00032E9A1000000000A3 /* AutoRaiseSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoRaiseSettingsView.swift; sourceTree = "<group>"; };
 		83D3283628F2FA5B00018D10 /* InfrastSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfrastSettingsView.swift; sourceTree = "<group>"; };
 		83D3283828F3048E00018D10 /* RoguelikeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoguelikeSettingsView.swift; sourceTree = "<group>"; };
 		83DD50B629BE385A000E84E7 /* UpdaterSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdaterSettingsView.swift; sourceTree = "<group>"; };
@@ -300,6 +306,7 @@
 				83264A2E29EBEE140074E33A /* RecruitConfiguration.swift */,
 				83264A3029EBEE3C0074E33A /* InfrastConfiguration.swift */,
 				83264A3229EBEE680074E33A /* MallConfiguration.swift */,
+				AE1A00012E9A1000000000A1 /* AutoRaiseConfiguration.swift */,
 				83264A3429EBEE8D0074E33A /* AwardConfiguration.swift */,
 				8341194F29EC249E00044F45 /* RoguelikeConfiguration.swift */,
 				8341195429EC55C600044F45 /* CopilotConfiguration.swift */,
@@ -317,6 +324,7 @@
 				83D3283628F2FA5B00018D10 /* InfrastSettingsView.swift */,
 				8383EA2E28F2C5BD007DAB9D /* FightSettingsView.swift */,
 				83D3283228F2F1BE00018D10 /* MallSettingsView.swift */,
+				AE1A00032E9A1000000000A3 /* AutoRaiseSettingsView.swift */,
 				83BFABC72AF1D5BA001A79F4 /* AwardSettingsView.swift */,
 				83D3283828F3048E00018D10 /* RoguelikeSettingsView.swift */,
 				83264A2529EBC9C10074E33A /* ReclamationSettingsView.swift */,
@@ -447,6 +455,7 @@
 			isa = PBXGroup;
 			children = (
 				83FF5A9B2978FE27000AE831 /* resource */,
+				AE1A00052E9A1000000000A5 /* mac_需求表.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -603,6 +612,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8320E6642CFE004D00F4BC95 /* Localizable.xcstrings in Resources */,
+				AE1A00062E9A1000000000A6 /* mac_需求表.json in Resources */,
 				83FF5A9C2978FE27000AE831 /* resource in Resources */,
 				833786D628F188D900D39D6F /* Preview Assets.xcassets in Resources */,
 				833786D328F188D900D39D6F /* Assets.xcassets in Resources */,
@@ -669,6 +679,7 @@
 				8329858C29EDA952009F7ED5 /* OpenLogFileView.swift in Sources */,
 				83D3283728F2FA5B00018D10 /* InfrastSettingsView.swift in Sources */,
 				83D3283328F2F1BE00018D10 /* MallSettingsView.swift in Sources */,
+				AE1A00042E9A1000000000A4 /* AutoRaiseSettingsView.swift in Sources */,
 				83985BC03025F0CF00D2A789 /* CopilotListContent.swift in Sources */,
 				83D3283128F2E7A600018D10 /* RecruitSettingsView.swift in Sources */,
 				832985AE29EEE672009F7ED5 /* UtilityContent.swift in Sources */,
@@ -693,6 +704,7 @@
 				83264A3129EBEE3C0074E33A /* InfrastConfiguration.swift in Sources */,
 				83264A2929EBEBB00074E33A /* MAATaskConfiguration.swift in Sources */,
 				83264A3329EBEE680074E33A /* MallConfiguration.swift in Sources */,
+				AE1A00022E9A1000000000A2 /* AutoRaiseConfiguration.swift in Sources */,
 				83D061F62CF81519008F0140 /* FileLogger.swift in Sources */,
 				8341195729EC58CF00044F45 /* MAACopilot.swift in Sources */,
 				8347B5A82CDF85A000AEB627 /* ResourceUpdateView.swift in Sources */,
