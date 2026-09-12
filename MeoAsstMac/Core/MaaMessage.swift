@@ -939,8 +939,12 @@ extension MAAViewModel {
             break
 
         case "Depot":
-            // TODO: (Persistence) Persist Depot recognition results and synchronization metadata.
-            logStore?.setDepot(.init(json: info.details, context: "Depot"))
+            // TODO: (Persistence) Persist Depot synchronization metadata.
+            let depot = MAADepot(json: info.details, context: "Depot")
+            logStore?.setDepot(depot)
+            if depot != nil {
+                logStore?.saveDepot(info.details)
+            }
 
         case "OperBox":
             // TODO: (Persistence) Persist OperBox recognition results and synchronization metadata.
