@@ -15,6 +15,7 @@ struct AutoRaiseConfiguration: MAATaskConfiguration {
 
     /// 养成计划 JSON：条目列表，每条 = 一个养成目标（行动单元）。
     /// `[{"name": "银灰", "action": "Elite", "to": 2, "level": 90},
+    ///    {"name": "银灰", "action": "Elite", "to": 0, "level": 45},
     ///    {"name": "银灰", "action": "Skills", "from": 4, "to": 7},
     ///    {"name": "银灰", "action": "Mastery", "skill": 3, "from": 0, "to": 3}]`
     /// 同干员同一条养成线（name + action + skill）只保留一条。
@@ -78,11 +79,11 @@ enum AutoRaiseAction: String, CaseIterable, Sendable {
         }
     }
 
-    /// 该动作允许的 to（目标档位）区间。
+    /// 该动作允许的 to（目标档位）区间；Elite 的 0 = 精英化 0 内升级（E0·1-60 级目标）。
     var targetRange: ClosedRange<Int> {
         switch self {
         case .elite:
-            return 1...2
+            return 0...2
         case .skills:
             return 2...7
         case .mastery:
@@ -99,7 +100,7 @@ struct AutoRaisePlan: Hashable, Sendable {
         let action: AutoRaiseAction
         /// 起始档位：Elite 无 from（恒 0）；Skills 1-6；Mastery 0-2。
         let from: Int
-        /// 目标档位：Elite 1-2；Skills 2-7；Mastery 1-3。
+        /// 目标档位：Elite 0-2（0 = 精英化 0）；Skills 2-7；Mastery 1-3。
         let to: Int
         /// 专精作用的技能序号（1 起），仅 Mastery 有。
         let skill: Int?
