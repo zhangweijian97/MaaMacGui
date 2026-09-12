@@ -5913,6 +5913,28 @@
         }
       }
     },
+    "精英化 0": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elite 0"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elite 0"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "精英化 0"
+          }
+        }
+      }
+    },
     "精英化 1": {
       "localizations": {
         "en": {
