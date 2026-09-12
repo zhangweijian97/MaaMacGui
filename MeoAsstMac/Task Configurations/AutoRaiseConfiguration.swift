@@ -334,6 +334,11 @@ struct AutoRaiseGap: Sendable {
 /// 单个干员的逐级养成需求（`mac_需求表.json` 的一条），材料为逐级增量。
 struct AutoRaiseCharacterDemand: Codable, Sendable {
     let id: String
+    /// 星级（1-6）；旧数据文件无该字段时为 nil（Optional 容错，解码不崩）。
+    let rarity: Int?
+    /// 各可达阶段的等级上限（下标 = 精英化阶，长度 = 可达阶段数；星级决定，如 6★ [50,80,90]、3★ [40,55]、1★/2★ [30]）；
+    /// 旧数据文件无该字段时为 nil。
+    let phaseMaxLevels: [Int]?
     /// 按技能序号（一/二/三技能）排列的技能名，显示层专用；无技能干员为空数组。
     let skillNames: [String]?
     /// 下标 i = 升到第 i+1 阶精英化的增量。
@@ -410,4 +415,14 @@ enum AutoRaiseDemandTable {
         }
         return table
     }()
+
+    /// 按干员名查各可达阶段的等级上限（长度 = 可达阶段数）；查无干员或旧数据文件
+    /// 无新字段（phaseMaxLevels 缺失/为空）返回 nil，调用方回退最宽 50/80/90。
+    static func caps(for name: String?) -> [Int]? {
+        guard let name,
+            let levels = shared[name]?.phaseMaxLevels,
+            !levels.isEmpty
+        else { return nil }
+        return levels
+    }
 }
