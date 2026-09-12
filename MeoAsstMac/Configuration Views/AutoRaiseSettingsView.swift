@@ -227,7 +227,7 @@ struct AutoRaiseSettingsView: View {
         searchText = name
         suggestionsDismissed = true
         let entries = plan.entries.filter { $0.name == name }
-        draft = AutoRaiseGoalDraft(entries: entries)
+        draft = AutoRaiseGoalDraft(entries: entries, name: name)
     }
 
     // MARK: - 目标设置面板（布局对照明日方舟工具箱的养成计划弹窗）
@@ -239,7 +239,7 @@ struct AutoRaiseSettingsView: View {
             Text(name)
                 .font(.headline)
 
-            eliteSection(tableCharacter)
+            eliteSection()
             skillsSection(tableCharacter)
             masterySection(tableCharacter)
 
@@ -266,21 +266,21 @@ struct AutoRaiseSettingsView: View {
     }
 
     /// 精英化终点式录入：目标阶段 + 目标等级双下拉（形态对照技能/专精行的弹出式菜单）。
-    /// 等级上限随阶段联动（E0→60、精1→80、精2→90），切阶段时重置为该阶段满级；不练时等级下拉禁用。
-    @ViewBuilder private func eliteSection(_ character: AutoRaiseCharacterDemand?) -> some View {
-        let available = character?.elite != nil
-        let maxElite = character?.elite?.count ?? 0
+    /// 阶段选项按选中干员可达档过滤（phaseMaxLevels 长度：3 档=全档、2 档=无精二、1 档=仅 E0），
+    /// 等级上限随干员×阶段查表联动，切阶段时重置为该阶段满级；不练时等级下拉禁用。
+    @ViewBuilder private func eliteSection() -> some View {
+        // 可达阶段数（1-3）；查无干员/旧数据无新字段回退 3 档（最宽，同现状）。
+        let phaseCount = min(max(AutoRaiseDemandTable.caps(for: panelName)?.count ?? 3, 1), 3)
         HStack(spacing: 16) {
             Picker(String(localized: "目标阶段"), selection: eliteStageBinding) {
                 Text("不练").tag(Int?.none)
                 Text("精英化 0").tag(Int?.some(0))
                 Text("精英化 1").tag(Int?.some(1))
-                    .disabled(!available || maxElite < 1)
+                    .disabled(phaseCount < 2)
                 Text("精英化 2").tag(Int?.some(2))
-                    .disabled(!available || maxElite < 2)
+                    .disabled(phaseCount < 3)
             }
             .pickerStyle(.menu)
-            .disabled(!available)
 
             Picker(String(localized: "目标等级"), selection: eliteLevelBinding) {
                 ForEach(1...eliteLevelUpperBound, id: \.self) { level in
@@ -288,18 +288,18 @@ struct AutoRaiseSettingsView: View {
                 }
             }
             .pickerStyle(.menu)
-            .disabled(!available || draft.eliteTarget == nil)
+            .disabled(draft.eliteTarget == nil)
         }
     }
 
-    /// 目标阶段：切到某阶段时目标等级自动重置为该阶段满级（默认选中满级）；不练（nil）不重置。
+    /// 目标阶段：切到某阶段时目标等级自动重置为该阶段实际上限（默认选中满级）；不练（nil）不重置。
     private var eliteStageBinding: Binding<Int?> {
         Binding {
             draft.eliteTarget
         } set: { newValue in
             draft.eliteTarget = newValue
             if let stage = newValue {
-                draft.eliteLevel = autoRaiseEliteMaxLevel(for: stage)
+                draft.eliteLevel = autoRaiseEliteMaxLevel(for: stage, of: panelName)
             }
         }
     }
@@ -313,9 +313,10 @@ struct AutoRaiseSettingsView: View {
         }
     }
 
-    /// 当前阶段的等级选项上限；不练（nil）时下拉已禁用，按精1 取 80 保证选项恒合法。
+    /// 当前阶段的等级选项上限（按干员查表，缺数据回退最宽档）；
+    /// 不练（nil）时下拉已禁用，按精1 上限取值保证选项恒合法。
     private var eliteLevelUpperBound: Int {
-        autoRaiseEliteMaxLevel(for: draft.eliteTarget ?? 1)
+        autoRaiseEliteMaxLevel(for: draft.eliteTarget ?? 1, of: panelName)
     }
 
     @ViewBuilder private func skillsSection(_ character: AutoRaiseCharacterDemand?) -> some View {
@@ -533,17 +534,20 @@ struct AutoRaiseSettingsView: View {
     // MARK: - 计划读写
 
     /// 以表单草稿替换该干员的全部计划条目，回写规范化 JSON。
-    /// 需求表无数据的维度不写入（面板对应行本就禁用，此处兜底防手改 JSON 残留勾选）。
+    /// 需求表无数据的维度不写入（面板对应行本就禁用，此处兜底防手改 JSON 残留勾选）；
+    /// 精英化 E0 例外——只耗经验书不耗 elite 材料，无表数据（1★/2★）也可生成。
     private func commitDraft() {
         guard let name = panelName else { return }
         let tableCharacter = AutoRaiseDemandTable.shared[name]
         updatePlan { parsed in
             parsed.entries.removeAll { $0.name == name }
-            if let stage = draft.eliteTarget, tableCharacter?.elite != nil {
+            // E0 只耗经验书不耗 elite 材料，不依赖需求表 elite 数据：对全部干员（含 1★/2★）可生成；
+            // 精1/精2 仍要求需求表有 elite 材料数据（保持现门，兜底防手改 JSON 残留）。
+            if let stage = draft.eliteTarget, stage == 0 || tableCharacter?.elite != nil {
                 parsed.entries.append(
                     .init(
                         name: name, action: .elite, from: 0, to: stage, skill: nil,
-                        level: min(max(draft.eliteLevel, 1), autoRaiseEliteMaxLevel(for: stage))
+                        level: min(max(draft.eliteLevel, 1), autoRaiseEliteMaxLevel(for: stage, of: name))
                     )
                 )
             }
@@ -705,13 +709,17 @@ struct AutoRaiseSettingsView: View {
     }
 }
 
-/// 精英化各阶段的等级上限（E0→60、精1→80、精2→90）：统一上限，不做低星干员差异化（已接受的简化）。
-private func autoRaiseEliteMaxLevel(for stage: Int) -> Int {
-    switch stage {
-    case 0: return 60
-    case 1: return 80
-    default: return 90
+/// 精英化 stage 阶的等级上限：按干员星级查需求表 phaseMaxLevels（长度 = 可达阶段数，
+/// 如 6★ [50,80,90]、5★ [50,70,80]、4★ [45,60,70]、3★ [40,55]、1★/2★ [30]）；
+/// 查无干员或旧数据无新字段回退最宽 50/80/90；stage 越档（手写 JSON 残留，如 3★ 写 to:2）
+/// 也按回退档取值，面板触碰合法档后即写回。
+private func autoRaiseEliteMaxLevel(for stage: Int, of name: String?) -> Int {
+    let fallback = [50, 80, 90]
+    let caps = AutoRaiseDemandTable.caps(for: name) ?? fallback
+    if caps.indices.contains(stage) {
+        return caps[stage]
     }
+    return fallback.indices.contains(stage) ? fallback[stage] : fallback[2]
 }
 
 /// 目标设置面板的草稿状态；一行 = 一个 from/to 区间 + 启用勾选。
@@ -724,7 +732,7 @@ private struct AutoRaiseGoalDraft: Hashable {
 
     /// 精英化目标阶（nil = 不练，0/1/2 = 目标精英化阶；用可选值区分「不练」与真实的 E0 目标）。
     var eliteTarget: Int?
-    /// 精英化目标等级（精1 上限 80、精2 上限 90）；旧条目无 level 回填该阶段满级。
+    /// 精英化目标等级（上限随干员×阶段查表联动，显示与提交均钳制）；旧条目无 level 回填该阶段实际上限。
     var eliteLevel = 90
     /// 技能等级目标（1-7），默认 1 → 7。
     var skills = Line(from: 1, to: 7)
@@ -733,14 +741,14 @@ private struct AutoRaiseGoalDraft: Hashable {
 
     init() {}
 
-    /// 从该干员已有计划条目回填（按钮呈「更新」态）。
-    init(entries: [AutoRaisePlan.Entry]) {
+    /// 从该干员已有计划条目回填（按钮呈「更新」态）；name 用于查该干员各阶段实际上限。
+    init(entries: [AutoRaisePlan.Entry], name: String? = nil) {
         for entry in entries {
             switch entry.action {
             case .elite:
-                // to 0/1/2 均为真实目标（E0/精1/精2），直写可选档位；缺 level 回填该阶段满级。
+                // to 0/1/2 均为真实目标（E0/精1/精2），直写可选档位；缺 level 回填该阶段实际上限。
                 eliteTarget = entry.to
-                eliteLevel = entry.level ?? autoRaiseEliteMaxLevel(for: entry.to)
+                eliteLevel = entry.level ?? autoRaiseEliteMaxLevel(for: entry.to, of: name)
             case .skills:
                 skills = Line(isEnabled: true, from: entry.from, to: entry.to)
             case .mastery:
