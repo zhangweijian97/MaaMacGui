@@ -265,9 +265,9 @@ struct AutoRaiseSettingsView: View {
         .id(Self.goalPanelAnchor)
     }
 
-    /// 精英化终点式录入：目标阶段 + 目标等级双下拉（形态对照技能/专精行的弹出式菜单）。
+    /// 精英化终点式录入：目标阶段下拉 + 目标等级「数字输入框+步进器」（等级为宽范围数值，宜键入直达、箭头 ±1 微调）。
     /// 阶段选项按选中干员可达档过滤（phaseMaxLevels 长度：3 档=全档、2 档=无精二、1 档=仅 E0），
-    /// 等级上限随干员×阶段查表联动，切阶段时重置为该阶段满级；不练时等级下拉禁用。
+    /// 等级上限随干员×阶段查表联动，切阶段时重置为该阶段满级；不练时等级输入禁用。
     @ViewBuilder private func eliteSection() -> some View {
         // 可达阶段数（1-3）；查无干员/旧数据无新字段回退 3 档（最宽，同现状）。
         let phaseCount = min(max(AutoRaiseDemandTable.caps(for: panelName)?.count ?? 3, 1), 3)
@@ -282,12 +282,14 @@ struct AutoRaiseSettingsView: View {
             }
             .pickerStyle(.menu)
 
-            Picker(String(localized: "目标等级"), selection: eliteLevelBinding) {
-                ForEach(1...eliteLevelUpperBound, id: \.self) { level in
-                    Text("\(level)").tag(level)
-                }
+            HStack(spacing: 4) {
+                Text("目标等级")
+                TextField(String(localized: "目标等级"), value: eliteLevelBinding, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 60)
+                Stepper(String(localized: "目标等级"), value: eliteLevelBinding, in: 1...eliteLevelUpperBound)
+                    .labelsHidden()
             }
-            .pickerStyle(.menu)
             .disabled(draft.eliteTarget == nil)
         }
     }
@@ -313,8 +315,8 @@ struct AutoRaiseSettingsView: View {
         }
     }
 
-    /// 当前阶段的等级选项上限（按干员查表，缺数据回退最宽档）；
-    /// 不练（nil）时下拉已禁用，按精1 上限取值保证选项恒合法。
+    /// 当前阶段的等级上限（按干员查表，缺数据回退最宽档）；
+    /// 不练（nil）时输入已禁用，按精1 上限取值保证钳制结果恒合法。
     private var eliteLevelUpperBound: Int {
         autoRaiseEliteMaxLevel(for: draft.eliteTarget ?? 1, of: panelName)
     }
