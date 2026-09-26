@@ -129,6 +129,7 @@ private struct RegularCopilotConfigView: View {
             }
             .animation(.default, value: config.support_unit_usage)
         }
+        SSSCopilotConfigView(config: $config)
     }
 }
 

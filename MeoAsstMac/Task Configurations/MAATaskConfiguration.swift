@@ -51,6 +51,8 @@ extension MAAHandle {
             return try appendTask(type: .Depot, params: "")
         case .award(let config):
             return try appendTask(config: config)
+        case .switchTheme(let config):
+            return try appendTask(config: config)
         case .roguelike(let config):
             return try appendTask(config: config)
         case .reclamation(let config):

@@ -32,6 +32,8 @@ struct TaskDetail: View {
                         AutoRaiseSettingsView(config: taskConfigBinding(config, id: id))
                     case .award(let config):
                         AwardSettingsView(config: taskConfigBinding(config, id: id))
+                    case .switchTheme(let config):
+                        SwitchThemeSettingsView(config: taskConfigBinding(config, id: id))
                     case .roguelike(let config):
                         RoguelikeSettingsView(config: taskConfigBinding(config, id: id))
                     case .reclamation(let config):
