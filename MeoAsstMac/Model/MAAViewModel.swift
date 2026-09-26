@@ -59,7 +59,7 @@ import SwiftUI
 
     /// 一个条目占用的全部 core 任务 id 及其状态。
     ///
-    /// 条目可以拆成多个 core 任务（「更新数据」= 干员识别 + 仓库识别），
+    /// 条目可以拆成多个 core 任务（「更新数据」= 干员识别 + 仓库识别，「库存保持」= 仓库识别 + 若干理智作战），
     /// 条目状态按 WPF 口径合成：任一子任务失败即失败，全部完成才算完成。
     private var taskSubtasks = [UUID: [Int32]]()
     private var subtaskStatuses = [Int32: TaskStatus]()
@@ -70,7 +70,8 @@ import SwiftUI
             return
         }
 
-        // 先记状态再合成：子任务的完成顺序不确定（一图流拉取可能先于同条目的 core 子任务结束）
+        // 先记状态再合成：子任务的完成顺序不确定（一图流拉取可能先于同条目的 core 子任务结束，
+        // 多个作战任务按队列顺序先后结束）
         subtaskStatuses[coreID] = status
 
         let subtasks = taskSubtasks[id] ?? [coreID]
@@ -101,6 +102,11 @@ import SwiftUI
         }
         taskSubtasks[id, default: []].append(contentsOf: coreTaskIDs)
     }
+
+    /// 「库存保持」下发的作战任务：core 任务 id → 该任务的计划与缺口。
+    ///
+    /// 作战任务开始前按最新库存重算缺口要用（前置的仓库识别会刷新库存）。
+    private var depotMaintainFights = [Int32: DepotMaintainConfiguration.FightTask]()
 
     /// 前端子任务（不占 core 任务，如「更新数据」中从一图流获取的干员识别）的哨兵 id。
     ///
@@ -306,6 +312,7 @@ extension MAAViewModel {
         taskIDMap.removeAll()
         taskSubtasks.removeAll()
         subtaskStatuses.removeAll()
+        depotMaintainFights.removeAll()
         taskStatus.removeAll()
 
         guard requireConnect else { return }
@@ -571,6 +578,7 @@ extension MAAViewModel {
         let plans = planTasks()
         // 一图流子任务不依赖模拟器：本轮没有任何 core 任务时（例如「更新数据」仅勾选干员识别
         // 且从一图流获取）不必连接，同队列还有 core 任务时连接仍先于它们的执行。
+        // 「库存保持」本轮也可能没有任何 core 任务（无计划需要下发），此时同样不必连接模拟器
         try await ensureHandle(requireConnect: plans.contains { $0.coreTask != nil })
 
         var hasCoreTask = false
@@ -590,12 +598,16 @@ extension MAAViewModel {
 
             let coreTaskIDs = try await handle?.appendTask(coreTask) ?? []
             addTaskIDs(coreTaskIDs, for: plan.id)
+            if case .depotmaintain(let config) = coreTask {
+                registerDepotMaintainFights(coreTaskIDs, config: config)
+            }
             hasCoreTask = hasCoreTask || !coreTaskIDs.isEmpty
         }
 
         guard hasCoreTask else {
-            // 本轮没有任何 core 任务（例如「更新数据」仅勾选干员识别且从一图流获取），不启动 core，
-            // 条目状态由各自分支标记
+            // 本轮没有任何 core 任务（例如「更新数据」仅勾选干员识别且从一图流获取，
+            // 或「库存保持」的计划库存都已充足），不启动 core，
+            // 条目状态由各自分支标记（「库存保持」在规划阶段即已标记）
             return
         }
 
@@ -608,7 +620,7 @@ extension MAAViewModel {
     /// 本轮要执行的一个队列条目。
     private struct TaskPlan {
         let id: UUID
-        /// 交给 core 追加的任务；「更新数据」剔除一图流子项后 core 无事可做时为 nil
+        /// 交给 core 追加的任务；「更新数据」剔除一图流子项、「库存保持」无可下发计划且无需刷新库存时为 nil
         let coreTask: MAATask?
         /// 干员识别改由一图流 OpenAPI 拉取（不占 core 任务，也不需要模拟器连接）
         let operBoxFromYituliu: Bool
@@ -617,14 +629,28 @@ extension MAAViewModel {
         let operBoxTokenMissing: Bool
     }
 
-    /// 规划本轮任务：按触发间隔与一图流开关决定子项去留，只读状态、不触碰 core。
+    /// 规划本轮任务：只读状态、不触碰 core。
     ///
-    /// 「更新数据」是前端伪任务，规划的产物既决定要追加哪些 core 任务，也决定本轮是否需要模拟器连接。
+    /// 「更新数据」按触发间隔与一图流开关决定子项去留；「库存保持」按当前库存决定要下发哪些计划。
+    /// 两者都是前端伪任务，规划的产物既决定要追加哪些 core 任务，也决定本轮是否需要模拟器连接。
     private func planTasks() -> [TaskPlan] {
         var plans = [TaskPlan]()
 
         for task in tasks {
             guard task.enabled else { continue }
+
+            if case .depotmaintain(var config) = task.task {
+                guard prepareDepotMaintain(&config) else {
+                    taskStatus[task.id] = .skipped
+                    continue
+                }
+
+                plans.append(
+                    TaskPlan(
+                        id: task.id, coreTask: .depotmaintain(config),
+                        operBoxFromYituliu: false, operBoxTokenMissing: false))
+                continue
+            }
 
             guard case .userdataupdate(var config) = task.task else {
                 plans.append(
@@ -753,6 +779,130 @@ extension MAAViewModel {
         logStore?.setOperBox(operBox)
         lastOperBoxSyncTime = .now
         return true
+    }
+}
+
+// MARK: Depot Maintain
+
+extension MAAViewModel {
+    /// 当前仓库库存（材料 ID → 数量），未识别过仓库时为空。
+    ///
+    /// 对齐 WPF `ToolboxViewModel.DepotResult`：只取有效数量（core 对未识别到的材料给 −1）。
+    var depotInventory: [String: Int] {
+        guard let depot = logStore?.depot else { return [:] }
+        return depot.items.filter { $0.value >= 0 }
+    }
+
+    /// 当前库存里某材料的数量，未识别过仓库时返回 nil（配置页展示用）
+    func currentInventory(of dropId: String) -> Int? {
+        guard !dropId.isEmpty else {
+            return nil
+        }
+        return depotInventory[dropId]
+    }
+
+    /// 材料名，材料表未加载时退回材料 ID
+    func itemName(for dropId: String) -> String {
+        FightConfiguration.dropItems.first { $0.id == dropId }?.item.name ?? dropId
+    }
+
+    /// 按当前库存规划「库存保持」本轮要下发的作战任务，结果写回 `config.fights`。
+    ///
+    /// 对齐 WPF `DepotMaintainTaskUserControlModel.ISerialize`：逐条计划按「目标库存 − 当前库存」算缺口，
+    /// 参数不合法（未选材料、目标库存为 0、未填关卡）或库存已充足的计划跳过并留日志；
+    /// 勾选「仅执行第一个库存不足的计划」时，在第一个需刷取的计划之后停止。
+    /// - Returns: 本轮是否需要下发 core 任务；false 表示整个条目跳过（不产生 core 任务）。
+    private func prepareDepotMaintain(_ config: inout DepotMaintainConfiguration) -> Bool {
+        let inventory = depotInventory
+        var fights = [DepotMaintainConfiguration.FightTask]()
+
+        for (offset, plan) in config.plans.enumerated() {
+            let label = "#\(offset + 1)"
+
+            guard !plan.dropId.isEmpty else {
+                logError(verbatim: "\(label) " + String(localized: "未指定掉落物"))
+                continue
+            }
+            guard plan.dropCount > 0 else {
+                logError(verbatim: "\(label) " + String(localized: "目标库存为 0"))
+                continue
+            }
+            guard !plan.stage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                logError(verbatim: "\(label) " + String(localized: "未指定关卡"))
+                continue
+            }
+
+            let current = inventory[plan.dropId] ?? 0
+            let need = plan.dropCount - current
+            let name = itemName(for: plan.dropId)
+            guard need > 0 else {
+                logInfo(
+                    verbatim: "\(label) \(name) " + String(localized: "库存充足") + " \(current)/\(plan.dropCount)")
+                continue
+            }
+
+            fights.append(
+                .init(index: offset + 1, plan: plan, config: config.fightConfiguration(for: plan, need: need)))
+            logInfo(
+                verbatim: "\(label) \(name) " + String(localized: "库存不足，需刷取") + " \(need)（\(current)/\(plan.dropCount)）")
+
+            if config.onlyFirstInsufficientPlan {
+                // 仅下发第一个库存不足的计划，其后计划本轮不评估也不输出日志
+                break
+            }
+        }
+
+        config.fights = fights
+
+        guard config.updateDepot || !fights.isEmpty else {
+            if config.plans.isEmpty {
+                logError(verbatim: String(localized: "未配置任何计划"))
+            }
+            return false
+        }
+        return true
+    }
+
+    /// 登记「库存保持」本轮下发的作战任务，供任务开始时按最新库存重算缺口。
+    ///
+    /// core 任务 id 按追加顺序返回：仓库识别在前，其后依次是各计划对应的作战任务。
+    private func registerDepotMaintainFights(_ coreTaskIDs: [Int32], config: DepotMaintainConfiguration) {
+        let fightIDs = config.updateDepot ? coreTaskIDs.dropFirst() : coreTaskIDs[...]
+        for (fight, coreTaskID) in zip(config.fights, fightIDs) {
+            depotMaintainFights[coreTaskID] = fight
+        }
+    }
+
+    /// 作战任务开始前用最新库存重算缺口并重下发参数。
+    ///
+    /// 对齐 WPF `FightSettingsUserControlModel.RefreshFightTaskDrops`：前置的仓库识别会刷新库存，
+    /// 规划阶段算出的缺口可能已经过时（前序计划也可能刷出了同一材料）；
+    /// 缺口补齐时下发 times = 0，core 视为跳过本任务（不进图）。
+    func refreshDepotMaintainFight(coreID: Int32) async {
+        guard var fight = depotMaintainFights[coreID] else {
+            return
+        }
+
+        let label = "#\(fight.index)"
+        let name = itemName(for: fight.plan.dropId)
+        let current = depotInventory[fight.plan.dropId] ?? 0
+        let need = fight.plan.dropCount - current
+
+        if need > 0 {
+            fight.config.drops = [fight.plan.dropId: need]
+            logInfo(
+                verbatim: "\(label) \(name) " + String(localized: "库存不足，需刷取") + " \(need)（\(current)/\(fight.plan.dropCount)）")
+        } else {
+            fight.config.times = 0
+            logInfo(verbatim: "\(label) \(name) " + String(localized: "库存已充足，跳过"))
+        }
+        depotMaintainFights[coreID] = fight
+
+        do {
+            try await handle?.setTaskParams(id: coreID, params: fight.config.params.jsonString())
+        } catch {
+            logError(verbatim: "\(label) " + String(localized: "更新任务参数失败") + "：\(error)")
+        }
     }
 }
 

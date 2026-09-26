@@ -33,6 +33,8 @@
 		83264A3329EBEE680074E33A /* MallConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3229EBEE680074E33A /* MallConfiguration.swift */; };
 		83264A3529EBEE8D0074E33A /* AwardConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3429EBEE8D0074E33A /* AwardConfiguration.swift */; };
 		225274591F2173E6A21B54F0 /* SwitchThemeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EB6BA32DAB8DA18E4B8B297 /* SwitchThemeConfiguration.swift */; };
+		F94DDD61A8B24654FD762C91 /* DepotMaintainConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF2336381725EED0D31A0F0 /* DepotMaintainConfiguration.swift */; };
+		205D889259043DC6D38909EC /* DepotMaintainSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D50BD9E1421A08F23B7C2DC /* DepotMaintainSettingsView.swift */; };
 		83264A3B29EC0F2E0074E33A /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3A29EC0F2E0074E33A /* LogView.swift */; };
 		83264ACB29EC0F2E0074E33A /* EditableTextList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264ACA29EC0F2E0074E33A /* EditableTextList.swift */; };
 		83264A3E29EC22DE0074E33A /* MAAViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83264A3D29EC22DE0074E33A /* MAAViewModel.swift */; };
@@ -179,6 +181,8 @@
 		83264A3229EBEE680074E33A /* MallConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MallConfiguration.swift; sourceTree = "<group>"; };
 		83264A3429EBEE8D0074E33A /* AwardConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AwardConfiguration.swift; sourceTree = "<group>"; };
 		2EB6BA32DAB8DA18E4B8B297 /* SwitchThemeConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchThemeConfiguration.swift; sourceTree = "<group>"; };
+		3FF2336381725EED0D31A0F0 /* DepotMaintainConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepotMaintainConfiguration.swift; sourceTree = "<group>"; };
+		0D50BD9E1421A08F23B7C2DC /* DepotMaintainSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepotMaintainSettingsView.swift; sourceTree = "<group>"; };
 		83264A3A29EC0F2E0074E33A /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
 		83264ACA29EC0F2E0074E33A /* EditableTextList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditableTextList.swift; sourceTree = "<group>"; };
 		83264A3D29EC22DE0074E33A /* MAAViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MAAViewModel.swift; sourceTree = "<group>"; };
@@ -316,6 +320,7 @@
 				83264A3229EBEE680074E33A /* MallConfiguration.swift */,
 				83264A3429EBEE8D0074E33A /* AwardConfiguration.swift */,
 				2EB6BA32DAB8DA18E4B8B297 /* SwitchThemeConfiguration.swift */,
+				3FF2336381725EED0D31A0F0 /* DepotMaintainConfiguration.swift */,
 				9350BE2979C1711F99786F9D /* UserDataUpdateConfiguration.swift */,
 				8341194F29EC249E00044F45 /* RoguelikeConfiguration.swift */,
 				8341195429EC55C600044F45 /* CopilotConfiguration.swift */,
@@ -335,6 +340,7 @@
 				83D3283228F2F1BE00018D10 /* MallSettingsView.swift */,
 				83BFABC72AF1D5BA001A79F4 /* AwardSettingsView.swift */,
 				714ED6EEFCEED065D64918F3 /* SwitchThemeSettingsView.swift */,
+				0D50BD9E1421A08F23B7C2DC /* DepotMaintainSettingsView.swift */,
 				ED6500D0C850B11687C89DC3 /* UserDataUpdateSettingsView.swift */,
 				83D3283828F3048E00018D10 /* RoguelikeSettingsView.swift */,
 				83264A2529EBC9C10074E33A /* ReclamationSettingsView.swift */,
@@ -648,6 +654,7 @@
 				8341195329EC25A900044F45 /* MAALog.swift in Sources */,
 				83BFABC82AF1D5BA001A79F4 /* AwardSettingsView.swift in Sources */,
 				B2F78243EABE3F6910568B94 /* SwitchThemeSettingsView.swift in Sources */,
+				205D889259043DC6D38909EC /* DepotMaintainSettingsView.swift in Sources */,
 				9BC2EEB32E3F188D0039C4DB /* MiniGameView.swift in Sources */,
 				832985BB29EFA26D009F7ED5 /* TaskDetail.swift in Sources */,
 				834DEC122C4D94BD0073B5D4 /* ClosedownConfiguration.swift in Sources */,
@@ -710,6 +717,7 @@
 				8315B0BD290E48F300AE7FDC /* StartupSettingsView.swift in Sources */,
 				83264A3529EBEE8D0074E33A /* AwardConfiguration.swift in Sources */,
 				225274591F2173E6A21B54F0 /* SwitchThemeConfiguration.swift in Sources */,
+				F94DDD61A8B24654FD762C91 /* DepotMaintainConfiguration.swift in Sources */,
 				831100C43026440D00554899 /* NewViewModel.swift in Sources */,
 				832985BD29EFA43B009F7ED5 /* MAADetail.swift in Sources */,
 				83264A2D29EBEDD80074E33A /* FightConfiguration.swift in Sources */,

@@ -214,6 +214,9 @@ protocol LogStore: AnyObject {
     func setOperBox(_ operBox: MAAOperBox?)
     func setDailyTasksDetailMode(_ mode: MAAViewModel.DailyTasksDetailMode)
 
+    /// 最近一次仓库识别的结果（「库存保持」按它计算各计划的缺口）
+    var depot: MAADepot? { get }
+
     var screencapCost: (min: Int, max: Int, avg: Int)? { get set }
     var lastScreencapWarningLevel: Int { get set }
     var hasPrintedFPSHighTip: Bool { get set }

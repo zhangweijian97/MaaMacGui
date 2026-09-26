@@ -6656,6 +6656,267 @@
         }
       }
     }
+,
+    "库存保持" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depot Maintain"
+          }
+        }
+      }
+    },
+    "未配置任何计划" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No plans configured"
+          }
+        }
+      }
+    },
+    "保持计划" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintain Plans"
+          }
+        }
+      }
+    },
+    "任务开始前更新库存数据" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update inventory before starting"
+          }
+        }
+      }
+    },
+    "仅执行第一个库存不足的计划" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only execute the first insufficient plan"
+          }
+        }
+      }
+    },
+    "先识别一次仓库，用最新库存计算各计划的缺口，再按计划刷取材料。库存数据来自最近一次仓库识别。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recognize the depot first so each plan's shortfall is computed from the latest inventory, then farm accordingly. Inventory data comes from the last depot recognition."
+          }
+        }
+      }
+    },
+    "添加计划" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Plan"
+          }
+        }
+      }
+    },
+    "每条计划把指定材料补到目标库存：关卡填 core 关卡名（如 CE-6、AP-5、PR-A-1），材料与目标库存在计划内编辑。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each plan tops the chosen item up to the target amount. Set the stage to a core stage name (e.g. CE-6, AP-5, PR-A-1), and pick the item and target amount inside the plan."
+          }
+        }
+      }
+    },
+    "启用「吃理智药」预算" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable per-plan sanity potion budget"
+          }
+        }
+      }
+    },
+    "启用「吃源石」预算" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable per-plan originite prime budget"
+          }
+        }
+      }
+    },
+    "使用 48 小时内过期的理智药" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use expiring sanity potions (within 48 hours)"
+          }
+        }
+      }
+    },
+    "AUTO 代理倍率" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto Series"
+          }
+        }
+      }
+    },
+    "关卡与战斗" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stage & Battle"
+          }
+        }
+      }
+    },
+    "未勾选「AUTO 代理倍率」时按单倍代理；勾选后按当前理智可刷的最大倍率代理，单次刷取可能超过目标库存上限。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When unchecked, runs at 1x; when checked, runs at the highest series multiplier allowed by current sanity, so drops from a single run may exceed the target inventory."
+          }
+        }
+      }
+    },
+    "关卡" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stage"
+          }
+        }
+      }
+    },
+    "材料" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Item"
+          }
+        }
+      }
+    },
+    "目标库存" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target"
+          }
+        }
+      }
+    },
+    "未选择" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Selected"
+          }
+        }
+      }
+    },
+    "当前库存（最近一次仓库识别）" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current inventory (from the last depot recognition)"
+          }
+        }
+      }
+    },
+    "未指定掉落物" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no drop item specified"
+          }
+        }
+      }
+    },
+    "目标库存为 0" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "target inventory is 0"
+          }
+        }
+      }
+    },
+    "未指定关卡" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stage not specified"
+          }
+        }
+      }
+    },
+    "库存充足" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sufficient"
+          }
+        }
+      }
+    },
+    "库存不足，需刷取" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "insufficient, need"
+          }
+        }
+      }
+    },
+    "库存已充足，跳过" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "inventory sufficient, skipping"
+          }
+        }
+      }
+    },
+    "更新任务参数失败" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to update task parameters"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }

@@ -16,6 +16,7 @@ enum MAATask: Codable, Equatable {
     case mall(MallConfiguration)
     case award(AwardConfiguration)
     case switchTheme(SwitchThemeConfiguration)
+    case depotmaintain(DepotMaintainConfiguration)
     case userdataupdate(UserDataUpdateConfiguration)
     case roguelike(RoguelikeConfiguration)
     case reclamation(ReclamationConfiguration)
@@ -29,6 +30,7 @@ let defaultTaskConfigurations: [any MAATaskConfiguration] = [
     MallConfiguration(),
     AwardConfiguration(),
     SwitchThemeConfiguration(),
+    DepotMaintainConfiguration(),
     RoguelikeConfiguration(),
     ReclamationConfiguration(),
     UserDataUpdateConfiguration(),
@@ -54,6 +56,8 @@ extension MAATaskType: Codable, CustomStringConvertible {
             return String(localized: "领取奖励")
         case .SwitchTheme:
             return String(localized: "更换主题")
+        case .DepotMaintain:
+            return String(localized: "库存保持")
         case .UserDataUpdate:
             return String(localized: "更新数据")
         case .Roguelike:

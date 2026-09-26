@@ -149,6 +149,16 @@ actor MAAHandle {
         }
     }
 
+    /// 更新排队中任务的参数。
+    ///
+    /// 库存保持在作战任务开始前按最新库存重算缺口，用本方法把新参数重下发给 core
+    /// （core 侧对已开始的任务只接受材料缺口/次数等运行期可变的参数）。
+    func setTaskParams(id: Int32, params: String) throws {
+        guard AsstSetTaskParams(handle, id, params).isTrue else {
+            throw MaaCoreError.setTaskParamsFailed
+        }
+    }
+
     func connect(adbPath: String, address: String, profile: String) async throws {
         let info = try await waitFor(AsstAsyncConnect(handle, adbPath, address, profile, 0))
 
@@ -208,6 +218,7 @@ enum MAATaskType: String {
     case Award
     case SwitchTheme
     case UserDataUpdate
+    case DepotMaintain
     case Roguelike
     case Copilot
     case SSSCopilot
@@ -224,6 +235,7 @@ enum MaaCoreError: Error {
     case setUserDirectoryFailed
     case setInstanceOptionFailed
     case appendTaskFailed
+    case setTaskParamsFailed
     case startFailed
     case stopFailed
     case connectFailed

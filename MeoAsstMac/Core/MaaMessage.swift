@@ -370,6 +370,10 @@ extension MAAViewModel {
         case .TaskChainStart:
             // macOS task items do not currently support custom display names.
             // TODO: (ViewState) Switch the overlay log source for Copilot and daily tasks.
+            if info.taskchain == "Fight" {
+                // 「库存保持」的作战任务：开始前按最新库存重算缺口（前置仓库识别已刷新库存）
+                Task { await refreshDepotMaintainFight(coreID: info.taskid) }
+            }
             updateTaskStatus(.running, coreID: info.taskid)
             logTrace(.startTask(name: taskchainName))
 
