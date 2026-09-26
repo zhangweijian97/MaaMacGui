@@ -29,6 +29,8 @@ struct TasksContent: View {
                     TaskCell(id: task.id, config: config, enabled: $task.enabled)
                 case .autoRaise(let config):
                     TaskCell(id: task.id, config: config, enabled: $task.enabled)
+                case .operProgress(let config):
+                    TaskCell(id: task.id, config: config, enabled: $task.enabled)
                 case .award(let config):
                     TaskCell(id: task.id, config: config, enabled: $task.enabled)
                 case .switchTheme(let config):

@@ -15,6 +15,7 @@ enum MAATask: Codable, Equatable {
     case fight(FightConfiguration)
     case mall(MallConfiguration)
     case autoRaise(AutoRaiseConfiguration)
+    case operProgress(OperProgressConfiguration)
     case award(AwardConfiguration)
     case switchTheme(SwitchThemeConfiguration)
     case roguelike(RoguelikeConfiguration)
@@ -28,6 +29,7 @@ let defaultTaskConfigurations: [any MAATaskConfiguration] = [
     FightConfiguration(),
     MallConfiguration(),
     AutoRaiseConfiguration(),
+    OperProgressConfiguration(),
     AwardConfiguration(),
     SwitchThemeConfiguration(),
     RoguelikeConfiguration(),
@@ -52,6 +54,8 @@ extension MAATaskType: Codable, CustomStringConvertible {
             return String(localized: "收取信用及购物")
         case .AutoRaise:
             return String(localized: "自动养成")
+        case .OperProgress:
+            return String(localized: "干员培养")
         case .Award:
             return String(localized: "领取奖励")
         case .SwitchTheme:

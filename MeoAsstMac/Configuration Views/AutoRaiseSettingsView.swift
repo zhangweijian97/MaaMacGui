@@ -763,7 +763,8 @@ private struct AutoRaiseGoalDraft: Hashable {
 }
 
 /// 干员搜索索引：中文名 → 全拼 / 首字母（系统 toLatin 变换 + 去声调，惰性建立后缓存）。
-private enum AutoRaiseSearchIndex {
+/// 自动养成与干员培养两个配置页共用（同一张需求表的干员名集合）。
+enum AutoRaiseSearchIndex {
     struct Entry {
         let fullPinyin: String
         let initials: String

@@ -30,6 +30,8 @@ struct TaskDetail: View {
                         MallSettingsView(config: taskConfigBinding(config, id: id))
                     case .autoRaise(let config):
                         AutoRaiseSettingsView(config: taskConfigBinding(config, id: id))
+                    case .operProgress(let config):
+                        OperProgressSettingsView(config: taskConfigBinding(config, id: id))
                     case .award(let config):
                         AwardSettingsView(config: taskConfigBinding(config, id: id))
                     case .switchTheme(let config):

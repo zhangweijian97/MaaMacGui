@@ -20,6 +20,22 @@
         }
       }
     },
+    "%@专精 → %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ mastery → %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@专精 → %lld"
+          }
+        }
+      }
+    },
     "%@的 from 应为 %lld-%lld 的整数": {
       "localizations": {
         "en": {
@@ -3278,6 +3294,22 @@
         }
       }
     },
+    "不设定": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not set"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不设定"
+          }
+        }
+      }
+    },
     "不购物": {
       "localizations": {
         "ko": {
@@ -3684,6 +3716,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "先运行一次任务识别库存"
+          }
+        }
+      }
+    },
+    "先锋": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vanguard"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "뱅가드"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先锋"
           }
         }
       }
@@ -4128,6 +4182,44 @@
       }
     },
     "助战模式": {},
+    "医疗": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medic"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메딕"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "医疗"
+          }
+        }
+      }
+    },
+    "协议 plans 数组，未设定的字段不下发。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protocol plans array; unset fields are omitted."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "协议 plans 数组，未设定的字段不下发。"
+          }
+        }
+      }
+    },
     "单设施最优解": {
       "localizations": {
         "ko": {
@@ -4570,6 +4662,28 @@
       }
     },
     "干员名称": {},
+    "干员培养": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operator Development"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오퍼레이터 육성"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "干员培养"
+          }
+        }
+      }
+    },
     "干员寻访": {
       "localizations": {
         "ko": {
@@ -4835,6 +4949,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "技能 %lld → %lld"
+          }
+        }
+      }
+    },
+    "技能 → %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill → %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "技能 → %lld"
           }
         }
       }
@@ -5395,6 +5525,28 @@
     },
     "术/狙芯片": {},
     "术/狙芯片组": {},
+    "术师": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caster"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "캐스터"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "术师"
+          }
+        }
+      }
+    },
     "材料缺口": {
       "localizations": {
         "en": {
@@ -5708,6 +5860,50 @@
       }
     },
     "特别关注会影响干员识别准确率，如有特别关注干员识别错误请自行判断。": {},
+    "特种": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Specialist"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스페셜리스트"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特种"
+          }
+        }
+      }
+    },
+    "狙击": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sniper"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "스나이퍼"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "狙击"
+          }
+        }
+      }
+    },
     "现在": {
       "localizations": {
         "ko": {
@@ -6135,6 +6331,22 @@
         }
       }
     },
+    "职业": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Class"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "职业"
+          }
+        }
+      }
+    },
     "自动下载更新": {
       "localizations": {
         "ko": {
@@ -6476,6 +6688,22 @@
         }
       }
     },
+    "计划不含当前等级，需求按各线最低档起算（实际所需不超过此值）。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The plan carries no current levels; demand starts from the lowest tier of each line (actual cost is no more than this)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计划不含当前等级，需求按各线最低档起算（实际所需不超过此值）。"
+          }
+        }
+      }
+    },
     "计划有误": {
       "localizations": {
         "en": {
@@ -6720,6 +6948,28 @@
         }
       }
     },
+    "辅助": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supporter"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서포터"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辅助"
+          }
+        }
+      }
+    },
     "运行日志": {
       "localizations": {
         "ko": {
@@ -6744,6 +6994,28 @@
     },
     "近/特芯片": {},
     "近/特芯片组": {},
+    "近卫": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guard"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가드"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近卫"
+          }
+        }
+      }
+    },
     "还原默认": {},
     "进行每日免费单抽": {
       "localizations": {
@@ -6833,6 +7105,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "앱을 다시 열어야 적용됩니다."
+          }
+        }
+      }
+    },
+    "重装": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Defender"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "디펜더"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重装"
           }
         }
       }
