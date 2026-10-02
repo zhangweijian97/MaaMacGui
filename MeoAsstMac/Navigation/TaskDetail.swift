@@ -28,6 +28,8 @@ struct TaskDetail: View {
                         FightSettingsView(config: taskConfigBinding(config, id: id))
                     case .mall(let config):
                         MallSettingsView(config: taskConfigBinding(config, id: id))
+                    case .operProgress(let config):
+                        OperProgressSettingsView(config: taskConfigBinding(config, id: id))
                     case .award(let config):
                         AwardSettingsView(config: taskConfigBinding(config, id: id))
                     case .switchTheme(let config):

@@ -469,7 +469,7 @@ extension MAAViewModel {
         try await ensureHandle()
 
         for task in tasks {
-            guard task.enabled else { continue }
+            guard task.enabled, !task.task.isEmptyConfiguration else { continue }
 
             if let coreID = try await handle?.appendTask(task.task) {
                 taskIDMap[coreID] = task.id
