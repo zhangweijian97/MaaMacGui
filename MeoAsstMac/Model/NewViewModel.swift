@@ -7,6 +7,7 @@
 
 import Combine
 import Foundation
+import JBirdCore
 import Observation
 
 // TODO: Mirgrate all bridges
@@ -101,6 +102,14 @@ import Observation
         } catch {
             let content = String(localized: "日志文件出错: \(error.localizedDescription)")
             logs.append(.init(date: .now, content: content, color: .error))
+        }
+
+        // Restore the persisted Depot recognition result, if any.
+        do {
+            depot = try Self.loadPersistedDepot()
+        } catch {
+            let content = String(localized: "仓库缓存读取失败: \(error.localizedDescription)")
+            appendLog(.init(date: .now, content: content, color: .warning))
         }
 
         parent.$status.sink { [weak self] _ in
@@ -211,6 +220,7 @@ protocol LogStore: AnyObject {
     func clearLogs()
     func setLastImportedCopilot(_ url: URL)
     func setDepot(_ depot: MAADepot?)
+    func saveDepot(_ details: JSON)
     func setOperBox(_ operBox: MAAOperBox?)
     func setDailyTasksDetailMode(_ mode: MAAViewModel.DailyTasksDetailMode)
 
@@ -242,11 +252,48 @@ extension NewViewModel: LogStore {
         self.depot = depot
     }
 
+    func saveDepot(_ details: JSON) {
+        do {
+            try FileManager.default.createDirectory(
+                at: Self.depotURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true)
+            try details.serialize().write(to: Self.depotURL, options: .atomic)
+        } catch {
+            let content = String(localized: "仓库缓存写入失败: \(error.localizedDescription)")
+            appendLog(.init(date: .now, content: content, color: .warning))
+        }
+    }
+
     func setOperBox(_ operBox: MAAOperBox?) {
         self.operBox = operBox
     }
 
     func setDailyTasksDetailMode(_ mode: MAAViewModel.DailyTasksDetailMode) {
         dailyTasksDetailMode = mode
+    }
+}
+
+// MARK: - Depot Persistence
+
+extension NewViewModel {
+    /// The cache file of the latest Depot recognition result,
+    /// following the `DailyTasks` directory convention under Application Support.
+    static var depotURL: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Depot", isDirectory: true)
+            .appendingPathComponent("depot.json")
+    }
+
+    /// Loads the persisted Depot recognition result.
+    ///
+    /// A missing cache is not an error and yields `nil`;
+    /// a corrupt cache throws so the caller can log-and-continue.
+    static func loadPersistedDepot() throws -> MAADepot? {
+        let url = depotURL
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
+        let data = try Data(contentsOf: url)
+        return try MAADepot(json: JSON(data))
     }
 }

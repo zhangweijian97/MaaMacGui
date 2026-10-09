@@ -45,9 +45,15 @@ extension MAAHandle {
             return try appendTask(config: config)
         case .mall(let config):
             return try appendTask(config: config)
-        case .operProgress(let config):
-            return try appendTask(config: config)
+        case .autoRaise:
+            // 自动养成只读骨架：core 无 AutoRaise 任务类型，实际下发 Depot（仓库识别），
+            // 仅读取仓库库存，不改动游戏状态。
+            return try appendTask(type: .Depot, params: "")
         case .award(let config):
+            return try appendTask(config: config)
+        case .operProgress(let config):
+            // 干员培养：按上游协议下发 plans（core 侧任务注册开关未开时会返回 0 抛错，
+            // 与 WPF 端同状态）。
             return try appendTask(config: config)
         case .switchTheme(let config):
             return try appendTask(config: config)

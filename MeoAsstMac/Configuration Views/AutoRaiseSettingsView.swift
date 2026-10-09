@@ -1,0 +1,844 @@
+//
+//  AutoRaiseSettingsView.swift
+//  MeoAsstMac
+//
+
+import SwiftUI
+
+struct AutoRaiseSettingsView: View {
+    @Environment(NewViewModel.self) private var viewModel
+    /// 浮层实底用固定色：系统动态色在 vibrant 上下文会解析出半透明变体（用户截图实证文字穿透）。
+    @Environment(\.colorScheme) private var colorScheme
+
+    @Binding var config: AutoRaiseConfiguration
+
+    @State private var itemNames = [String: String]()
+    @State private var nameTaskToken: UUID?
+
+    /// 干员搜索框内容。
+    @State private var searchText = ""
+    /// 当前展开目标设置面板的干员。
+    @State private var panelName: String?
+    /// 目标设置面板的草稿值（添加/更新时写回计划）。
+    @State private var draft = AutoRaiseGoalDraft()
+    /// 选中干员后关闭建议浮层（全名仍会命中自身匹配，不关会常驻遮挡面板顶部）。
+    @State private var suggestionsDismissed = false
+    /// 建议行高，随系统字体缩放。
+    @ScaledMetric(relativeTo: .body) private var suggestionRowHeight: CGFloat = 24
+    /// 建议浮层顶部偏移：输入框高度 + 间隙，让列表从输入框下方展开不盖输入框。
+    @ScaledMetric(relativeTo: .body) private var suggestionListTopOffset: CGFloat = 30
+    /// 键盘 ↑/↓ 在建议列表中的高亮下标（循环回绕）；鼠标悬停同步到此（单一高亮源）。
+    @State private var selectedIndex = 0
+    /// 清空按钮悬停态。
+    @State private var clearButtonHover = false
+
+    /// 滚动锚点：目标面板顶部。
+    private static let goalPanelAnchor = "auto-raise-goal-panel"
+
+    private var plan: AutoRaisePlan {
+        AutoRaisePlan(json: config.planJson)
+    }
+
+    private var demand: AutoRaiseDemand? {
+        guard !plan.entries.isEmpty else { return nil }
+        return plan.demand(in: AutoRaiseDemandTable.shared)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 搜索区钉顶：宿主链（MAADetail/TaskDetail）无人提供滚动容器，
+            // 标题+搜索框留在滚动区外，建议浮层位置才不受下方内容展开影响。
+            VStack(alignment: .leading, spacing: 12) {
+                Text("养成计划")
+                    .font(.headline)
+
+                searchSection
+            }
+            .padding(.horizontal)
+            .padding(.top)
+            // 抬整层搜索区到滚动区之上：zIndex 只对直接父容器的兄弟生效，
+            // 挂在 TextField 上盖不过滚动区（待养成画在浮层上，文字叠加）。
+            .zIndex(1)
+            // 重新编辑搜索文本（与当前选中干员不一致）才恢复建议；
+            // selectCharacter 里也会改 searchText，须避免把刚置的关闭态冲掉。
+            .onChange(of: searchText) { _, newValue in
+                if newValue != panelName {
+                    suggestionsDismissed = false
+                }
+                selectedIndex = 0
+            }
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if let panelName {
+                            goalPanel(name: panelName)
+                        }
+
+                        planListSection
+
+                        Divider()
+
+                        debugSection
+
+                        Divider()
+
+                        Text("缺口报告")
+                            .font(.headline)
+
+                        gapReport
+                    }
+                    .padding()
+                    // 小窗兜底：面板展开时滚到其顶部，保证完整进入视野。
+                    .onChange(of: panelName) { _, newName in
+                        guard newName != nil else { return }
+                        withAnimation {
+                            proxy.scrollTo(Self.goalPanelAnchor, anchor: .top)
+                        }
+                    }
+                }
+            }
+        }
+        .task(id: AutoRaiseReportKey(items: viewModel.depot?.items, plan: config.planJson)) {
+            await updateItemNames()
+        }
+    }
+
+    // MARK: - 干员搜索
+
+    private var searchSection: some View {
+        TextField(String(localized: "搜索干员（支持拼音）"), text: $searchText)
+            .textFieldStyle(.roundedBorder)
+            // ↑/↓ 循环移动高亮，Enter 选中，Esc 关浮层（已关则交还默认行为）。
+            .onKeyPress(keys: [.upArrow, .downArrow, .return, .escape]) { press in
+                let matches = searchMatches
+                guard !suggestionsDismissed, !matches.isEmpty else { return .ignored }
+                switch press.key {
+                case .upArrow:
+                    selectedIndex = (selectedSuggestionIndex(matches) - 1 + matches.count) % matches.count
+                    return .handled
+                case .downArrow:
+                    selectedIndex = (selectedSuggestionIndex(matches) + 1) % matches.count
+                    return .handled
+                case .return:
+                    selectCharacter(matches[selectedSuggestionIndex(matches)])
+                    return .handled
+                case .escape:
+                    suggestionsDismissed = true
+                    return .handled
+                default:
+                    return .ignored
+                }
+            }
+            // 快速清空：✕ 在输入框内部右侧（同标准搜索框），不外占宽度。
+            .overlay(alignment: .trailing) {
+                clearSearchButton
+                    .padding(.trailing, 4)
+            }
+            // 建议列表是浮层：不占布局流，从输入框顶边下移一个输入框高度起向下展开，
+            // 不会盖住输入框（层序由外层搜索区的 zIndex 抬高）。
+            // 缩进对齐滚动区内容：本区在滚动区外，滚动条占位实测 17，不缩会凸出。
+            .padding(.trailing, 17)
+            .overlay(alignment: .top) {
+                suggestionList
+                    .offset(y: suggestionListTopOffset)
+                    .padding(.trailing, 17)
+            }
+    }
+
+    /// 清空按钮：输入非空才显示；点击清搜索文本、收起面板（浮层随空匹配自然消失）。
+    @ViewBuilder private var clearSearchButton: some View {
+        if !searchText.isEmpty {
+            Button {
+                searchText = ""
+                panelName = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(clearButtonHover ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { clearButtonHover = $0 }
+        }
+    }
+
+    /// 键盘高亮下标钳制在当前匹配范围内。
+    private func selectedSuggestionIndex(_ matches: [String]) -> Int {
+        guard !matches.isEmpty else { return 0 }
+        return min(selectedIndex, matches.count - 1)
+    }
+
+    /// 匹配结果浮层：选中后关闭、重新编辑恢复；最多 30 条。
+    /// 高度显式 = 行数×行高封顶 200：overlay 只向子视图提议宿主（输入框）尺寸，
+    /// 仅用 maxHeight 会被压成单行视口，第二条起不可见。
+    @ViewBuilder private var suggestionList: some View {
+        let matches = searchMatches
+        if !matches.isEmpty, !suggestionsDismissed {
+            let listHeight = min(CGFloat(matches.count) * suggestionRowHeight, 200)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(matches.enumerated()), id: \.element) { index, name in
+                        Button {
+                            selectCharacter(name)
+                        } label: {
+                            Text(name)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(height: suggestionRowHeight)
+                                .padding(.horizontal, 8)
+                                .contentShape(Rectangle())
+                                .background(
+                                    index == selectedSuggestionIndex(matches)
+                                        ? Color.accentColor.opacity(0.15)
+                                        : Color.clear
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { hovering in
+                            // 悬停即成为当前选中（单一高亮源，同系统菜单）。
+                            if hovering { selectedIndex = index }
+                        }
+                    }
+                }
+            }
+            // 隐藏 ScrollView 自带玻璃材质（macOS 26 默认，叠在实底上呈半透明）。
+            .scrollContentBackground(.hidden)
+            .frame(maxWidth: .infinity)
+            .frame(height: listHeight)
+            // 实底固定色 + ViewBuilder fill 形态（`in:` 变体疑似不渲染，像素实证穿透）。
+            .background {
+                RoundedRectangle(cornerRadius: 6).fill(colorScheme == .dark ? Color.black : Color.white)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
+            }
+        }
+    }
+
+    /// 匹配结果（中文名子串 / 全拼片段 / 首字母前缀），按名称排序取前 30。
+    private var searchMatches: [String] {
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !query.isEmpty else { return [] }
+        return Array(AutoRaiseSearchIndex.matching(query).sorted().prefix(30))
+    }
+
+    /// 选中干员：输入框补全全名，关闭建议浮层，展开目标面板（已在计划中则回填现值）。
+    private func selectCharacter(_ name: String) {
+        panelName = name
+        searchText = name
+        suggestionsDismissed = true
+        let entries = plan.entries.filter { $0.name == name }
+        draft = AutoRaiseGoalDraft(entries: entries, name: name)
+    }
+
+    // MARK: - 目标设置面板（布局对照明日方舟工具箱的养成计划弹窗）
+
+    private func goalPanel(name: String) -> some View {
+        let tableCharacter = AutoRaiseDemandTable.shared[name]
+        let inPlan = plan.entries.contains { $0.name == name }
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(name)
+                .font(.headline)
+
+            eliteSection()
+            skillsSection(tableCharacter)
+            masterySection(tableCharacter)
+
+            if tableCharacter == nil {
+                Text("需求表无此干员，无法设置养成目标")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+
+            HStack {
+                Spacer()
+                Button(inPlan ? String(localized: "更新") : String(localized: "添加")) {
+                    commitDraft()
+                }
+                .disabled(tableCharacter == nil)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay {
+            RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
+        }
+        .id(Self.goalPanelAnchor)
+    }
+
+    /// 精英化终点式录入：目标阶段下拉 + 目标等级「数字输入框+步进器」（等级为宽范围数值，宜键入直达、箭头 ±1 微调）。
+    /// 阶段选项按选中干员可达档过滤（phaseMaxLevels 长度：3 档=全档、2 档=无精二、1 档=仅 E0），
+    /// 等级上限随干员×阶段查表联动，切阶段时重置为该阶段满级；不练时等级输入禁用。
+    @ViewBuilder private func eliteSection() -> some View {
+        // 可达阶段数（1-3）；查无干员/旧数据无新字段回退 3 档（最宽，同现状）。
+        let phaseCount = min(max(AutoRaiseDemandTable.caps(for: panelName)?.count ?? 3, 1), 3)
+        HStack(spacing: 16) {
+            Picker(String(localized: "目标阶段"), selection: eliteStageBinding) {
+                Text("不练").tag(Int?.none)
+                Text("精英化 0").tag(Int?.some(0))
+                Text("精英化 1").tag(Int?.some(1))
+                    .disabled(phaseCount < 2)
+                Text("精英化 2").tag(Int?.some(2))
+                    .disabled(phaseCount < 3)
+            }
+            .pickerStyle(.menu)
+
+            HStack(spacing: 4) {
+                Text("目标等级")
+                TextField(String(localized: "目标等级"), value: eliteLevelBinding, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 60)
+                Stepper(String(localized: "目标等级"), value: eliteLevelBinding, in: 1...eliteLevelUpperBound)
+                    .labelsHidden()
+            }
+            .disabled(draft.eliteTarget == nil)
+        }
+    }
+
+    /// 目标阶段：切到某阶段时目标等级自动重置为该阶段实际上限（默认选中满级）；不练（nil）不重置。
+    private var eliteStageBinding: Binding<Int?> {
+        Binding {
+            draft.eliteTarget
+        } set: { newValue in
+            draft.eliteTarget = newValue
+            if let stage = newValue {
+                draft.eliteLevel = autoRaiseEliteMaxLevel(for: stage, of: panelName)
+            }
+        }
+    }
+
+    /// 目标等级：读写均钳制在 1…当前阶段上限内（回填旧数据超上限时的兜底）。
+    private var eliteLevelBinding: Binding<Int> {
+        Binding {
+            min(max(draft.eliteLevel, 1), eliteLevelUpperBound)
+        } set: { newValue in
+            draft.eliteLevel = min(max(newValue, 1), eliteLevelUpperBound)
+        }
+    }
+
+    /// 当前阶段的等级上限（按干员查表，缺数据回退最宽档）；
+    /// 不练（nil）时输入已禁用，按精1 上限取值保证钳制结果恒合法。
+    private var eliteLevelUpperBound: Int {
+        autoRaiseEliteMaxLevel(for: draft.eliteTarget ?? 1, of: panelName)
+    }
+
+    @ViewBuilder private func skillsSection(_ character: AutoRaiseCharacterDemand?) -> some View {
+        // skills 增量阶数（6 = 等级 1-7）；无数据则整行禁用，选项退化为静态区间。
+        let hasData = !(character?.skills ?? []).isEmpty
+        let maxLevel = hasData ? min((character?.skills?.count ?? 0) + 1, 7) : 0
+        // 选项恒为合法闭区间（lower ≤ upper），禁用态也不崩。
+        let fromOptions = hasData ? Array(1...max(1, min(maxLevel - 1, 6))) : Array(1...6)
+        let toUpper = hasData ? maxLevel : 7
+        let toOptions = Array((draft.skills.from + 1)...max(draft.skills.from + 1, toUpper))
+        HStack(spacing: 8) {
+            Toggle("技能", isOn: $draft.skills.isEnabled)
+                .disabled(!hasData)
+            Text("从")
+            Picker(String(localized: "技能起始等级"), selection: skillsFromBinding) {
+                ForEach(fromOptions, id: \.self) { level in
+                    Text("\(level)").tag(level)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(!hasData)
+            Text("到")
+            Picker(String(localized: "技能目标等级"), selection: skillsToBinding(toUpper: toUpper)) {
+                ForEach(toOptions, id: \.self) { level in
+                    Text("\(level)").tag(level)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(!hasData)
+        }
+    }
+
+    /// 改起始等级即视为启用该目标，并把目标等级抬到至少 +1（from < to 结构保证）。
+    private var skillsFromBinding: Binding<Int> {
+        Binding {
+            draft.skills.from
+        } set: { newValue in
+            draft.skills.isEnabled = true
+            draft.skills.from = newValue
+            if draft.skills.to <= newValue {
+                draft.skills.to = min(newValue + 1, 7)
+            }
+        }
+    }
+
+    private func skillsToBinding(toUpper: Int) -> Binding<Int> {
+        Binding {
+            max(draft.skills.to, draft.skills.from + 1)
+        } set: { newValue in
+            draft.skills.isEnabled = true
+            draft.skills.to = min(max(newValue, draft.skills.from + 1), max(2, toUpper))
+        }
+    }
+
+    @ViewBuilder private func masterySection(_ character: AutoRaiseCharacterDemand?) -> some View {
+        let slots = character?.mastery ?? []
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(0..<3, id: \.self) { index in
+                masteryRow(
+                    index: index,
+                    slotAvailable: index < slots.count && slots[index] != nil,
+                    label: character?.skillLabel(index + 1) ?? masteryName(index)
+                )
+            }
+        }
+    }
+
+    private func masteryRow(index: Int, slotAvailable: Bool, label: String) -> some View {
+        HStack(spacing: 8) {
+            Toggle(label, isOn: masteryEnabledBinding(index: index))
+                .disabled(!slotAvailable)
+            Text("从")
+            Picker(String(localized: "专精起始档位"), selection: masteryFromBinding(index: index)) {
+                ForEach(0...2, id: \.self) { rank in
+                    Text("\(rank)").tag(rank)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(!slotAvailable)
+            Text("到")
+            Picker(String(localized: "专精目标档位"), selection: masteryToBinding(index: index)) {
+                ForEach((draft.masteries[index].from + 1)...3, id: \.self) { rank in
+                    Text("\(rank)").tag(rank)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 64)
+            .disabled(!slotAvailable)
+        }
+    }
+
+    private func masteryName(_ index: Int) -> String {
+        [String(localized: "一技能"), String(localized: "二技能"), String(localized: "三技能")][index]
+    }
+
+    /// 改起始档位即视为启用该目标，并把目标档位抬到至少 +1（from < to 结构保证）。
+    private func masteryFromBinding(index: Int) -> Binding<Int> {
+        Binding {
+            draft.masteries[index].from
+        } set: { newValue in
+            draft.masteries[index].isEnabled = true
+            draft.masteries[index].from = newValue
+            if draft.masteries[index].to <= newValue {
+                draft.masteries[index].to = min(newValue + 1, 3)
+            }
+        }
+    }
+
+    private func masteryToBinding(index: Int) -> Binding<Int> {
+        Binding {
+            max(draft.masteries[index].to, draft.masteries[index].from + 1)
+        } set: { newValue in
+            draft.masteries[index].isEnabled = true
+            draft.masteries[index].to = max(newValue, draft.masteries[index].from + 1)
+        }
+    }
+
+    private func masteryEnabledBinding(index: Int) -> Binding<Bool> {
+        Binding {
+            draft.masteries[index].isEnabled
+        } set: { isOn in
+            draft.masteries[index].isEnabled = isOn
+        }
+    }
+
+    // MARK: - 待养成列表（按干员分组）
+
+    private var planListSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("待养成")
+                .font(.subheadline)
+
+            let grouped = Dictionary(grouping: plan.entries, by: \.name)
+            if grouped.isEmpty {
+                Text("尚未添加干员，搜索选择后设置目标")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(grouped.keys.sorted(), id: \.self) { name in
+                        characterGroup(name: name, entries: grouped[name]!.sorted(by: entryOrder))
+                    }
+                }
+            }
+        }
+    }
+
+    /// 组内排序：精英化 → 技能 → 专精（按技能序号）。
+    private func entryOrder(_ lhs: AutoRaisePlan.Entry, _ rhs: AutoRaisePlan.Entry) -> Bool {
+        switch (lhs.action, rhs.action) {
+        case (.elite, .elite):
+            return false
+        case (.elite, _):
+            return true
+        case (_, .elite):
+            return false
+        case (.skills, .skills):
+            return false
+        case (.skills, _):
+            return true
+        case (_, .skills):
+            return false
+        case (.mastery, .mastery):
+            return (lhs.skill ?? 0) < (rhs.skill ?? 0)
+        }
+    }
+
+    private func characterGroup(name: String, entries: [AutoRaisePlan.Entry]) -> some View {
+        let character = AutoRaiseDemandTable.shared[name]
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Button {
+                    selectCharacter(name)
+                } label: {
+                    Text(name)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Button {
+                    removeCharacter(name)
+                } label: {
+                    Text("删除")
+                        .font(.callout)
+                }
+                .buttonStyle(.borderless)
+            }
+            ForEach(entries, id: \.self) { entry in
+                HStack {
+                    Text(entry.summaryText(character: character))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 12)
+                    Spacer()
+                    Button {
+                        removeEntry(entry)
+                    } label: {
+                        Text("删除")
+                            .font(.callout)
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+        }
+    }
+
+    // MARK: - 计划读写
+
+    /// 以表单草稿替换该干员的全部计划条目，回写规范化 JSON。
+    /// 需求表无数据的维度不写入（面板对应行本就禁用，此处兜底防手改 JSON 残留勾选）；
+    /// 精英化 E0 例外——只耗经验书不耗 elite 材料，无表数据（1★/2★）也可生成。
+    private func commitDraft() {
+        guard let name = panelName else { return }
+        let tableCharacter = AutoRaiseDemandTable.shared[name]
+        updatePlan { parsed in
+            parsed.entries.removeAll { $0.name == name }
+            // E0 只耗经验书不耗 elite 材料，不依赖需求表 elite 数据：对全部干员（含 1★/2★）可生成；
+            // 精1/精2 仍要求需求表有 elite 材料数据（保持现门，兜底防手改 JSON 残留）。
+            if let stage = draft.eliteTarget, stage == 0 || tableCharacter?.elite != nil {
+                parsed.entries.append(
+                    .init(
+                        name: name, action: .elite, from: 0, to: stage, skill: nil,
+                        level: min(max(draft.eliteLevel, 1), autoRaiseEliteMaxLevel(for: stage, of: name))
+                    )
+                )
+            }
+            if draft.skills.isEnabled, tableCharacter?.skills != nil {
+                parsed.entries.append(.init(name: name, action: .skills, from: draft.skills.from, to: draft.skills.to, skill: nil, level: nil))
+            }
+            let slots = tableCharacter?.mastery ?? []
+            for (index, line) in draft.masteries.enumerated() where line.isEnabled {
+                guard index < slots.count, slots[index] != nil else { continue }
+                parsed.entries.append(.init(name: name, action: .mastery, from: line.from, to: line.to, skill: index + 1, level: nil))
+            }
+        }
+    }
+
+    private func removeCharacter(_ name: String) {
+        updatePlan { $0.entries.removeAll { $0.name == name } }
+        if panelName == name {
+            panelName = nil
+        }
+    }
+
+    private func removeEntry(_ entry: AutoRaisePlan.Entry) {
+        updatePlan { $0.entries.removeAll { $0.lineKey == entry.lineKey } }
+    }
+
+    private func updatePlan(_ transform: (inout AutoRaisePlan) -> Void) {
+        var parsed = plan
+        transform(&parsed)
+        config.planJson = parsed.canonicalJson
+    }
+
+    // MARK: - 计划 JSON（debug 视图，最终用户界面不保留）
+
+    private var debugSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("养成计划 JSON（debug）")
+                .font(.subheadline)
+
+            ScrollView {
+                Text(debugJsonText)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .frame(minHeight: 120)
+            .overlay {
+                RoundedRectangle(cornerRadius: 6).stroke(.quaternary)
+            }
+
+            planIssues
+        }
+    }
+
+    /// 常态显示表单生成的规范化 JSON；手改坏 JSON 时原样展示原文便于排查。
+    private var debugJsonText: String {
+        let parsed = plan
+        return parsed.isUnparseable ? config.planJson : parsed.canonicalJson
+    }
+
+    @ViewBuilder private var planIssues: some View {
+        ForEach(plan.issues, id: \.self) { issue in
+            Text(issue.message)
+                .font(.callout)
+                .foregroundStyle(.red)
+        }
+    }
+
+    // MARK: - 缺口报告
+
+    @ViewBuilder private var gapReport: some View {
+        if let inventory = viewModel.depot?.items {
+            if let demand {
+                let gap = demand.gap(against: inventory)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("共 \(gap.total) 种材料 · 缺 \(gap.shortages.count) 种")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+
+                    if gap.shortages.isEmpty {
+                        Text("无缺口")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("材料缺口")
+                            .font(.subheadline)
+                        List(gap.shortages) { item in
+                            materialRow(item, showsShortfall: true)
+                        }
+                        .frame(minHeight: 100)
+                    }
+
+                    if !gap.satisfied.isEmpty {
+                        Text("已满足 \(gap.satisfied.count) 种")
+                            .font(.subheadline)
+                        List(gap.satisfied) { item in
+                            materialRow(item, showsShortfall: false)
+                        }
+                        .frame(minHeight: 60)
+                    }
+
+                    ForEach(demand.unknownCharacters, id: \.self) { name in
+                        Text("需求表无此干员：\(name)")
+                            .font(.callout)
+                            .foregroundStyle(.orange)
+                    }
+
+                    ForEach(demand.noData, id: \.self) { note in
+                        Text(note)
+                            .font(.callout)
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+        } else {
+            Text("先运行一次任务识别库存")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func itemName(_ itemId: String) -> String {
+        if let name = itemNames[itemId], !name.isEmpty {
+            return name
+        }
+        return itemId
+    }
+
+    /// 缺口行与已满足行同构：名称 + 需/有，缺口行额外显示缺口量。
+    @ViewBuilder private func materialRow(_ item: AutoRaiseGap.Item, showsShortfall: Bool) -> some View {
+        HStack {
+            Text(itemName(item.itemId))
+            Spacer()
+            Text("需 \(item.required) / 有 \(item.have)")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            if showsShortfall {
+                Text("×\(item.shortfall)")
+                    .monospacedDigit()
+            }
+        }
+    }
+
+    // MARK: - 材料名
+
+    private func updateItemNames() async {
+        guard viewModel.depot?.items != nil else { return }
+        guard let demand, !demand.items.isEmpty else { return }
+
+        let token = UUID()
+        nameTaskToken = token
+        let names = await MAAProvider.shared.itemNames(for: demand.items.keys)
+        guard !Task.isCancelled else {
+            if nameTaskToken == token {
+                nameTaskToken = nil
+            }
+            return
+        }
+        itemNames = names
+        nameTaskToken = nil
+    }
+}
+
+/// 精英化 stage 阶的等级上限：按干员星级查需求表 phaseMaxLevels（长度 = 可达阶段数，
+/// 如 6★ [50,80,90]、5★ [50,70,80]、4★ [45,60,70]、3★ [40,55]、1★/2★ [30]）；
+/// 查无干员或旧数据无新字段回退最宽 50/80/90；stage 越档（手写 JSON 残留，如 3★ 写 to:2）
+/// 也按回退档取值，面板触碰合法档后即写回。
+private func autoRaiseEliteMaxLevel(for stage: Int, of name: String?) -> Int {
+    let fallback = [50, 80, 90]
+    let caps = AutoRaiseDemandTable.caps(for: name) ?? fallback
+    if caps.indices.contains(stage) {
+        return caps[stage]
+    }
+    return fallback.indices.contains(stage) ? fallback[stage] : fallback[2]
+}
+
+/// 目标设置面板的草稿状态；一行 = 一个 from/to 区间 + 启用勾选。
+private struct AutoRaiseGoalDraft: Hashable {
+    struct Line: Hashable {
+        var isEnabled = false
+        var from: Int
+        var to: Int
+    }
+
+    /// 精英化目标阶（nil = 不练，0/1/2 = 目标精英化阶；用可选值区分「不练」与真实的 E0 目标）。
+    var eliteTarget: Int?
+    /// 精英化目标等级（上限随干员×阶段查表联动，显示与提交均钳制）；旧条目无 level 回填该阶段实际上限。
+    var eliteLevel = 90
+    /// 技能等级目标（1-7），默认 1 → 7。
+    var skills = Line(from: 1, to: 7)
+    /// 三行专精目标（0-3），下标 = 技能序号 − 1，默认 0 → 3。
+    var masteries = [Line(from: 0, to: 3), Line(from: 0, to: 3), Line(from: 0, to: 3)]
+
+    init() {}
+
+    /// 从该干员已有计划条目回填（按钮呈「更新」态）；name 用于查该干员各阶段实际上限。
+    init(entries: [AutoRaisePlan.Entry], name: String? = nil) {
+        for entry in entries {
+            switch entry.action {
+            case .elite:
+                // to 0/1/2 均为真实目标（E0/精1/精2），直写可选档位；缺 level 回填该阶段实际上限。
+                eliteTarget = entry.to
+                eliteLevel = entry.level ?? autoRaiseEliteMaxLevel(for: entry.to, of: name)
+            case .skills:
+                skills = Line(isEnabled: true, from: entry.from, to: entry.to)
+            case .mastery:
+                if let skill = entry.skill, masteries.indices.contains(skill - 1) {
+                    masteries[skill - 1] = Line(isEnabled: true, from: entry.from, to: entry.to)
+                }
+            }
+        }
+    }
+}
+
+/// 干员搜索索引：中文名 → 全拼 / 首字母（系统 toLatin 变换 + 去声调，惰性建立后缓存）。
+/// 自动养成与干员培养两个配置页共用（同一张需求表的干员名集合）。
+enum AutoRaiseSearchIndex {
+    struct Entry {
+        let fullPinyin: String
+        let initials: String
+    }
+
+    static let entries: [String: Entry] = {
+        var result = [String: Entry]()
+        for name in AutoRaiseDemandTable.shared.keys {
+            guard let latin = name.applyingTransform(.toLatin, reverse: false) else { continue }
+            let syllables = latin.lowercased()
+                .folding(options: .diacriticInsensitive, locale: nil)
+                .components(separatedBy: .whitespacesAndNewlines)
+                .filter { !$0.isEmpty }
+            result[name] = Entry(
+                fullPinyin: syllables.joined(),
+                initials: syllables.compactMap(\.first).map(String.init).joined()
+            )
+        }
+        return result
+    }()
+
+    /// 匹配规则：中文名子串 / 全拼片段 / 首字母前缀（如 lyyh → 凛御银灰）。
+    static func matching(_ query: String) -> [String] {
+        entries.filter { name, entry in
+            name.lowercased().contains(query)
+                || entry.fullPinyin.contains(query)
+                || entry.initials.hasPrefix(query)
+        }
+        .map(\.key)
+    }
+}
+
+/// 待养成行的行动短语。
+private extension AutoRaisePlan.Entry {
+    /// 专精短语优先查表显示技能真名（如「三技能（真银斩）专精 0 → 3」）；
+    /// 干员无表条目时回退序号标签。
+    func summaryText(character: AutoRaiseCharacterDemand?) -> String {
+        switch action {
+        case .elite:
+            if let level {
+                return String(localized: "精英化 → \(to) · \(level) 级")
+            }
+            return String(localized: "精英化 → \(to)")
+        case .skills:
+            return String(localized: "技能 \(from) → \(to)")
+        case .mastery:
+            let label = character.map { $0.skillLabel(skill ?? 1) } ?? skillLabel
+            return String(localized: "\(label)专精 \(from) → \(to)")
+        }
+    }
+
+    var skillLabel: String {
+        switch skill {
+        case 1:
+            return String(localized: "一技能")
+        case 2:
+            return String(localized: "二技能")
+        case 3:
+            return String(localized: "三技能")
+        default:
+            return String(localized: "第 \(skill ?? 0) 技能")
+        }
+    }
+}
+
+/// 缺口报告的重算触发键：库存或计划变化即刷新材料名。
+private struct AutoRaiseReportKey: Equatable {
+    let items: [String: Int]?
+    let plan: String
+}
+
+struct AutoRaiseSettingsView_Previews: PreviewProvider {
+    static var previews: some View {
+        AutoRaiseSettingsView(config: .constant(.init()))
+            .environment(NewViewModel(parent: MAAViewModel()))
+    }
+}
