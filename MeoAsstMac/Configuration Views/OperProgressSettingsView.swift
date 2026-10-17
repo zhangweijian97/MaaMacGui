@@ -24,7 +24,19 @@ struct OperProgressSettingsView: View {
     @State private var expandedPlans: Set<UUID> = []
 
     private static let toolboxURL = URL(string: "https://arkntools.app/#/material")!
-    private var directory: OperProgressOperatorDirectory.Directory { OperProgressOperatorDirectory.shared }
+
+    /// 干员目录持有为视图状态：系统语言切换时重载，刷新显示名/下拉列表的本地化
+    /// （对齐 WPF `LocalizationHelper.LanguageChanged += RefreshPlanItemLocalization`；
+    /// 我方无应用内语言设置，观察 `NSLocale.currentLocaleDidChangeNotification`）。
+    @State private var directory = OperProgressOperatorDirectory.shared
+    @State private var directoryLanguage: String?
+
+    private func reloadDirectoryIfNeeded(force: Bool = false) {
+        let language = Bundle.main.preferredLocalizations.first ?? "zh-Hans"
+        guard force || directoryLanguage != language else { return }
+        directory = OperProgressOperatorDirectory.Directory.load()
+        directoryLanguage = language
+    }
 
     var body: some View {
         ScrollView {
@@ -40,6 +52,12 @@ struct OperProgressSettingsView: View {
                 planList
             }
             .padding()
+        }
+        .onAppear {
+            reloadDirectoryIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
+            reloadDirectoryIfNeeded(force: true)
         }
     }
 
