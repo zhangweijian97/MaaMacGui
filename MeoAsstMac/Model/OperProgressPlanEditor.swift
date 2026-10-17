@@ -85,9 +85,10 @@ extension OperProgressPlanEditor {
         masteryValues[skill] = value
         masteryEnabled[skill] = value > 0
         // 设专精且已有技能等级目标：自动补至 7 级（等级未设定时保持不设定）。
-        if value > 0 && levelValue != 0 {
+        // 判据用勾选态而非显示值——未勾选时显示值仍是默认 7，按显示值判会把
+        // 未设定的等级误补成 7（决策表 5b 边界行；对齐 WPF `MainSkillLevel != 0`）。
+        if value > 0 && levelEnabled {
             levelValue = 7
-            levelEnabled = true
         }
     }
 
