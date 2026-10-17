@@ -291,8 +291,12 @@ struct OperProgressOperator: Hashable, Identifiable, Sendable {
         hasSameName ? "\(displayName)-\(role.title)" : displayName
     }
 
-    /// 培养技能数：6 星 3 个，4/5 星 2 个，3 星 1 个，其余无技能。
+    /// 培养技能数：6 星 3 个，4/5 星 2 个，3 星 1 个，其余无技能；
+    /// 阿米娅本体 5 星但 3 技能（对齐 WPF `oper.Id == "char_002_amiya"` 特判）。
     var skillCount: Int {
+        if id == "char_002_amiya" {
+            return 3
+        }
         switch rarity {
         case 6:
             return 3
@@ -370,7 +374,9 @@ enum OperProgressOperatorDirectory {
             let language = Bundle.main.preferredLocalizations.first ?? "zh-Hans"
             var candidates = [OperProgressOperator]()
             for (id, entry) in chars {
-                guard !blockedIDs.contains(id) else { continue }
+                // 屏蔽的阿米娅形态不进选择列表，但保留进反查目录：
+                // 剪贴板导入近卫/医疗形态（role+名匹配）时按 5 星=2 技能解析
+                // （对齐 WPF——屏蔽只在 OperatorNames 列表，条目 VM 仍可按名解析）。
                 guard let name = entry.name, !name.isEmpty else { continue }
                 guard let profession = entry.profession, let role = OperProgressRole(profession: profession) else {
                     continue
@@ -389,7 +395,7 @@ enum OperProgressOperatorDirectory {
             for entry in candidates {
                 sameNameCounts[entry.name, default: 0] += 1
             }
-            var entries = candidates.map { entry in
+            let entries = candidates.map { entry in
                 OperProgressOperator(
                     id: entry.id,
                     name: entry.name,
@@ -398,7 +404,9 @@ enum OperProgressOperatorDirectory {
                     rarity: entry.rarity,
                     hasSameName: sameNameCounts[entry.name, default: 0] > 1)
             }
-            entries.sort { lhs, rhs in
+
+            // 可选择列表：屏蔽形态剔除、按下拉顺序排序（稀有度降序 → 显示名升序）
+            let selectable = entries.filter { !blockedIDs.contains($0.id) }.sorted { lhs, rhs in
                 if lhs.rarity != rhs.rarity {
                     return lhs.rarity > rhs.rarity
                 }
@@ -410,7 +418,7 @@ enum OperProgressOperatorDirectory {
             }
 
             let byName = Dictionary(grouping: entries, by: \.name)
-            return Directory(all: entries, byName: byName)
+            return Directory(all: selectable, byName: byName)
         }
 
         private static func localizedName(_ entry: OperatorEntry, language: String) -> String {
