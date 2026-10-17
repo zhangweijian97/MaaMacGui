@@ -516,10 +516,12 @@ private struct OperProgressPlanCard: View {
     private func setLevelValue(_ value: Int) {
         levelValue = value
         levelEnabled = value > 0
-        // 专精前置为 7 级：设定 2–6 级目标时专精不共存，清空三行专精（值保留，重新勾选可恢复）。
+        // 专精前置为 7 级：设定 2–6 级目标时专精不共存，专精值归零
+        // （对齐 WPF MainSkillLevel setter——值清零而非仅取消勾选，重新勾选自动得专 3）。
         if value > 0 && value < 7 {
             for skill in 0..<3 {
                 masteryEnabled[skill] = false
+                masteryValues[skill] = 0
             }
         }
         writeBack()
