@@ -87,6 +87,8 @@
 		8366DE0129F2F26100F715E8 /* OperBoxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8366DE0029F2F26100F715E8 /* OperBoxView.swift */; };
 		8366DE0329F2F34100F715E8 /* MAAOperBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8366DE0229F2F34100F715E8 /* MAAOperBox.swift */; };
 		F7EE7225823B4AF68E2C4B23 /* MAAOperProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94684783910C4ADAA89F64EB /* MAAOperProgress.swift */; };
+		D7F18CABE096A1218C3682F5 /* OperProgressPlanEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E595C1071D3501E7A368FB3 /* OperProgressPlanEditor.swift */; };
+		3A02C9ECF3BAA969B030EDB1 /* OperProgressCallbackConsumer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC872670AEA5C5C76F3392E /* OperProgressCallbackConsumer.swift */; };
 		836E9975305338150082748D /* FightStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836E9974305338150082748D /* FightStage.swift */; };
 		836E997730534A200082748D /* StageActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836E997630534A200082748D /* StageActivity.swift */; };
 		83782A2B2CFFAF2900A32BDD /* LegacyConfigurations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83782A2A2CFFAF2900A32BDD /* LegacyConfigurations.swift */; };
@@ -237,6 +239,8 @@
 		8366DE0029F2F26100F715E8 /* OperBoxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperBoxView.swift; sourceTree = "<group>"; };
 		8366DE0229F2F34100F715E8 /* MAAOperBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MAAOperBox.swift; sourceTree = "<group>"; };
 		94684783910C4ADAA89F64EB /* MAAOperProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MAAOperProgress.swift; sourceTree = "<group>"; };
+		1E595C1071D3501E7A368FB3 /* OperProgressPlanEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperProgressPlanEditor.swift; sourceTree = "<group>"; };
+		DFC872670AEA5C5C76F3392E /* OperProgressCallbackConsumer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperProgressCallbackConsumer.swift; sourceTree = "<group>"; };
 		8368855029BD851F00C5B999 /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
 		836E9974305338150082748D /* FightStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FightStage.swift; sourceTree = "<group>"; };
 		836E997630534A200082748D /* StageActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageActivity.swift; sourceTree = "<group>"; };
@@ -503,6 +507,8 @@
 				8341195229EC25A900044F45 /* MAALog.swift */,
 				8366DE0229F2F34100F715E8 /* MAAOperBox.swift */,
 				94684783910C4ADAA89F64EB /* MAAOperProgress.swift */,
+				1E595C1071D3501E7A368FB3 /* OperProgressPlanEditor.swift */,
+				DFC872670AEA5C5C76F3392E /* OperProgressCallbackConsumer.swift */,
 				832985B329EF1219009F7ED5 /* MAARecruit.swift */,
 				83CFD47029EAACD7000428A1 /* MAATask.swift */,
 				83264A3D29EC22DE0074E33A /* MAAViewModel.swift */,
@@ -690,6 +696,8 @@
 				83985BC23026055400D2A789 /* FileTreeView.swift in Sources */,
 				8366DE0329F2F34100F715E8 /* MAAOperBox.swift in Sources */,
 				F7EE7225823B4AF68E2C4B23 /* MAAOperProgress.swift in Sources */,
+				D7F18CABE096A1218C3682F5 /* OperProgressPlanEditor.swift in Sources */,
+				3A02C9ECF3BAA969B030EDB1 /* OperProgressCallbackConsumer.swift in Sources */,
 				8329858A29ED121A009F7ED5 /* CopilotDetail.swift in Sources */,
 				838FF82229FBB9E3000566A0 /* GameSettingsView.swift in Sources */,
 				832985AC29EE9977009F7ED5 /* DepotView.swift in Sources */,
