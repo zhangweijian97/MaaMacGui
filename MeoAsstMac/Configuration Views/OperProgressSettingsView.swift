@@ -258,6 +258,8 @@ private struct OperProgressPlanCard: View {
     @State private var levelValue: Int
     @State private var masteryEnabled: [Bool]
     @State private var masteryValues: [Int]
+    /// 头部悬停态：悬停时徽标区隐、删除按钮现（对齐 WPF 两处 IsMouseOver 触发器）。
+    @State private var isHovered = false
 
     init(
         plan: Binding<OperProgressPlan>,
@@ -320,44 +322,83 @@ private struct OperProgressPlanCard: View {
                         .foregroundStyle(.secondary)
                     OperProgressAvatar(id: avatarID, size: 18)
                     Text(displayName)
-                    targetSummary
+                    // 悬停时徽标区让位给删除按钮（对齐 WPF 徽标 Grid 的 IsMouseOver 隐显触发器）
+                    if !isHovered {
+                        targetSummary
+                    }
                     Spacer(minLength: 8)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-
-            Button {
-                onDelete()
-            } label: {
-                Image(systemName: "trash")
-                    .foregroundStyle(.secondary)
+            .overlay(alignment: .trailing) {
+                if isHovered {
+                    Button {
+                        onDelete()
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("删除")
+                }
             }
-            .buttonStyle(.plain)
-            .help("删除")
+        }
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 
+    /// 目标摘要：精英化角标图 / 技能等级四角框 / 专精三圆角标+技能序号
+    /// （对齐 WPF xaml:194-298 的三处图形；等级框与专精图标互斥显隐——
+    /// 等级框仅在「设定等级且无任何专精」时显示）。
     @ViewBuilder private var targetSummary: some View {
         if plan.elite > 0 {
-            badge("精英\(plan.elite)")
+            eliteIcon(plan.elite)
         }
-        if plan.skillLevel > 0 {
-            badge("技能\(plan.skillLevel)")
+        if plan.skillLevel > 0, plan.skillMastery.allSatisfy({ $0 <= 0 }) {
+            skillLevelFrame(plan.skillLevel)
         }
         ForEach(0..<3, id: \.self) { skill in
             if skill < skillCount, masteryValue(skill) > 0 {
-                badge("技能\(skill + 1)专\(plan.skillMastery[skill])")
+                masteryBadge(skill)
             }
         }
     }
 
-    private func badge(_ text: String) -> some View {
-        Text(text)
-            .font(.caption)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Color.secondary.opacity(0.15), in: Capsule())
+    /// 精英化角标：上游 WPF 同款 Elite_N.png（40×30/40×38），16 高等比 + 轻投影。
+    private func eliteIcon(_ elite: Int) -> some View {
+        Image("OperElite\(elite)")
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 16, height: 16)
+            .shadow(color: .black.opacity(0.8), radius: 4, y: 0.5)
+    }
+
+    /// 技能等级四角框：48 设计稿的角括号等比缩到 16×16，中心数字
+    /// （对齐 WPF Path Data M 0,14 L 0,0 L 14,0 …，Stroke=PrimaryTextBrush 1.5、方头端点）。
+    private func skillLevelFrame(_ level: Int) -> some View {
+        ZStack {
+            CornerBracketShape()
+                .stroke(Color.primary, style: StrokeStyle(lineWidth: 1.5, lineCap: .square, lineJoin: .miter))
+            Text("\(level)")
+                .font(.system(size: 12))
+                .foregroundStyle(.primary)
+        }
+        .frame(width: 16, height: 16)
+    }
+
+    /// 专精角标：品字三圆按等级点亮 + 右上技能序号（对齐 WPF SkillSpecializationIcon + TextBlock）。
+    private func masteryBadge(_ skill: Int) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            OperProgressMasteryIcon(level: masteryValue(skill), size: 16)
+            Text("\(skill + 1)")
+                .font(.system(size: 11))
+                .foregroundStyle(.primary)
+                .shadow(color: .black.opacity(0.8), radius: 3, y: 0.5)
+        }
+        .fixedSize()
     }
 
     private func masteryValue(_ skill: Int) -> Int {
@@ -512,6 +553,67 @@ private struct OperProgressPlanCard: View {
         plan.skillMastery = (0..<3).map { skill in
             (masteryEnabled[skill] && skill < skillCount) ? masteryValues[skill] : 0
         }
+    }
+}
+
+// MARK: - 目标摘要图形
+
+/// 技能等级四角框：角括号描边（对齐 WPF 48×48 设计稿 Path 的等比缩放——
+/// 括号臂长 14/48 ≈ 宽度 29%，线宽按绝对像素 1.5 不随缩放）。
+private struct CornerBracketShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let arm = min(rect.width, rect.height) * (14.0 / 48.0)
+        // 左上
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + arm))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX + arm, y: rect.minY))
+        // 右上
+        path.move(to: CGPoint(x: rect.maxX - arm, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + arm))
+        // 左下
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY - arm))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + arm, y: rect.maxY))
+        // 右下
+        path.move(to: CGPoint(x: rect.maxX - arm, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - arm))
+        return path
+    }
+}
+
+/// 专精等级角标：品字排布三圆点，按专精等级逐步点亮——专 1 亮上圆、专 2 加亮右下圆、
+/// 专 3 全亮（对齐 WPF SkillSpecializationIcon：11×11 设计稿坐标固定、等比缩放、
+/// 亮 #FFFFFF / 灭 #555555、轻投影）。
+private struct OperProgressMasteryIcon: View {
+    let level: Int
+    var size: CGFloat = 16
+
+    var body: some View {
+        let scale = size / 11
+        let dot = 4 * scale
+        return ZStack {
+            Circle()
+                .fill(Self.color(on: level >= 1))
+                .frame(width: dot, height: dot)
+                .position(x: (3.6 + 2) * scale, y: (1 + 2) * scale)
+            Circle()
+                .fill(Self.color(on: level >= 2))
+                .frame(width: dot, height: dot)
+                .position(x: (6 + 2) * scale, y: (6 + 2) * scale)
+            Circle()
+                .fill(Self.color(on: level >= 3))
+                .frame(width: dot, height: dot)
+                .position(x: (0.8 + 2) * scale, y: (6 + 2) * scale)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: .black.opacity(0.5), radius: 1, y: 0.5)
+    }
+
+    private static func color(on: Bool) -> Color {
+        on ? .white : Color(red: 0x55 / 255.0, green: 0x55 / 255.0, blue: 0x55 / 255.0)
     }
 }
 
