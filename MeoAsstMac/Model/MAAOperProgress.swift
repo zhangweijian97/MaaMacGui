@@ -178,10 +178,8 @@ enum OperProgressParseError: LocalizedError {
 }
 
 enum OperProgressPlanParser {
-    /// core `OperProgressTask` 白名单键；多余键 core 会拒绝整份参数，导入时提前报错。
-    static let allowedKeys: Set<String> = ["role", "name", "elite", "skill_level", "skill_mastery"]
-
     /// 解析工具箱导出的计划 JSON 数组（`[{"role":"Warrior","name":"陈","elite":2,...}]`）。
+    /// 未知键忽略正常导入（对齐 WPF cs:376-395——工具箱导出带额外字段时不整单拒绝）；
     /// `role` 缺失或非法时按干员数据反查补全；名字缺失或查无即整体报错。
     static func parse(_ text: String) throws -> [OperProgressPlan] {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -210,13 +208,6 @@ enum OperProgressPlanParser {
             let index = offset + 1
             guard let dict = item as? [String: Any] else {
                 throw OperProgressParseError.invalidItem(index: index, reason: "应为对象")
-            }
-
-            let unknownKeys = Set(dict.keys).subtracting(Self.allowedKeys)
-            guard unknownKeys.isEmpty else {
-                throw OperProgressParseError.invalidItem(
-                    index: index,
-                    reason: "含未知字段 \(unknownKeys.sorted().joined(separator: "、"))")
             }
 
             guard let rawName = dict["name"] as? String,
