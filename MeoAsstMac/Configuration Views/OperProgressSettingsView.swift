@@ -20,27 +20,58 @@ struct OperProgressSettingsView: View {
     @State private var selectedOperator: OperProgressOperator?
     /// 选中后收起建议列表；再次编辑搜索文本时恢复。
     @State private var suggestionsDismissed = false
+    /// 搜索框聚焦态：聚焦即展开建议列表（对齐 WPF ComboBox 点开即浏览全量）。
+    @FocusState private var pickerFocused: Bool
     /// 展开的卡片集合（「全部折叠」与删除时同步清理）。
     @State private var expandedPlans: Set<UUID> = []
 
     private static let toolboxURL = URL(string: "https://arkntools.app/#/material")!
-    private var directory: OperProgressOperatorDirectory.Directory { OperProgressOperatorDirectory.shared }
+
+    /// 干员目录持有为视图状态：系统语言切换时重载，刷新显示名/下拉列表的本地化
+    /// （对齐 WPF `LocalizationHelper.LanguageChanged += RefreshPlanItemLocalization`；
+    /// 我方无应用内语言设置，观察 `NSLocale.currentLocaleDidChangeNotification`）。
+    @State private var directory = OperProgressOperatorDirectory.shared
+    @State private var directoryLanguage: String?
+
+    private func reloadDirectoryIfNeeded(force: Bool = false) {
+        let language = Bundle.main.preferredLocalizations.first ?? "zh-Hans"
+        guard force || directoryLanguage != language else { return }
+        directory = OperProgressOperatorDirectory.Directory.load()
+        directoryLanguage = language
+    }
 
     var body: some View {
+        // 虚拟化 + 固定区吸顶（对齐 WPF：链接随外层面板滚动，按钮行与干员选择固定，
+        // 列表惰性实例化——LazyVStack + Section header 吸顶）。
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            LazyVStack(alignment: .leading, spacing: 12, pinnedViews: [.sectionHeaders]) {
                 Link("在明日方舟工具箱中在线编辑计划", destination: Self.toolboxURL)
                     .font(.callout)
 
-                actionButtons
-                    .frame(maxWidth: .infinity)
+                Section {
+                    planList
+                } header: {
+                    VStack(spacing: 12) {
+                        actionButtons
+                            .frame(maxWidth: .infinity)
 
-                operatorPicker
-
-                planList
+                        operatorPicker
+                    }
+                    .padding(.vertical, 4)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                }
             }
             .padding()
         }
+        .onAppear {
+            reloadDirectoryIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
+            reloadDirectoryIfNeeded(force: true)
+        }
+        // Summary 回调消费后整体重建（对齐 WPF RefreshUI 语义：卡片/展开态/滚动位置重置，
+        // 从写回后的配置重建编辑态）
+        .id(viewModel.operProgressRefreshToken)
     }
 
     // MARK: - 操作按钮行
@@ -62,33 +93,54 @@ struct OperProgressSettingsView: View {
 
     // MARK: - 干员选择
 
+    /// 点开（聚焦）即浏览全量干员，输入即时过滤；选中后收起建议并在框内左侧
+    /// 显示已选干员头像（对齐 WPF 可搜索 ComboBox：DropDownOpened 清过滤展示全量
+    /// xaml:70-104 + 收起态头像浮层贴框内左侧）。
     private var operatorPicker: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                TextField("搜索干员", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                    .onChange(of: searchText) { _, newValue in
-                        if newValue != selectedOperator?.selectionTitle {
-                            selectedOperator = nil
-                            suggestionsDismissed = false
-                        }
-                    }
+                operatorField
                 Button("添加") {
                     addOperator()
                 }
                 .disabled(selectedOperator == nil)
             }
 
-            if !matches.isEmpty {
+            if pickerFocused, !matches.isEmpty {
                 suggestionList
             }
         }
     }
 
+    private var operatorField: some View {
+        HStack(spacing: 6) {
+            if let oper = selectedOperator {
+                OperProgressAvatar(id: oper.id, size: 16)
+            }
+            TextField("搜索干员", text: $searchText)
+                .textFieldStyle(.plain)
+                .focused($pickerFocused)
+                .onChange(of: searchText) { _, newValue in
+                    if newValue != selectedOperator?.selectionTitle {
+                        selectedOperator = nil
+                        suggestionsDismissed = false
+                    }
+                }
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(pickerFocused ? Color.accentColor : Color.gray.opacity(0.25), lineWidth: 1)
+        )
+    }
+
     private var matches: [OperProgressOperator] {
         guard !suggestionsDismissed else { return [] }
         let query = searchText.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return [] }
+        // 空查询即全量浏览（对齐 WPF：点开下拉展示完整列表，非必须先输入）
+        guard !query.isEmpty else { return directory.all }
         return directory.all.filter {
             $0.selectionTitle.localizedCaseInsensitiveContains(query) || $0.name.contains(query)
         }
@@ -115,7 +167,7 @@ struct OperProgressSettingsView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: min(CGFloat(matches.count) * 24 + 8, 200))
+        .frame(height: min(CGFloat(matches.count) * 24 + 8, 240))
         .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
     }
@@ -139,26 +191,25 @@ struct OperProgressSettingsView: View {
 
     // MARK: - 计划列表
 
+    /// 卡片作为 Section 内容直接挂在 LazyVStack 上（惰性实例化）；不套全量容器。
     @ViewBuilder private var planList: some View {
         if config.plans.isEmpty {
             Text("尚未添加干员，搜索选择后设置目标")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         } else {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach($config.plans) { $plan in
-                    let index = config.plans.firstIndex { $0.id == plan.id } ?? 0
-                    OperProgressPlanCard(
-                        plan: $plan,
-                        isExpanded: expansionBinding(for: plan.id),
-                        index: index,
-                        skillCount: skillCount(for: plan),
-                        displayName: displayName(for: plan),
-                        avatarID: operatorID(for: plan),
-                        onDelete: { removePlan(plan) })
-                }
-            }
             // 运行中列表不可编辑（对齐 WPF：任务运行时 ListBox 不响应交互）。
+            ForEach($config.plans) { $plan in
+                let index = config.plans.firstIndex { $0.id == plan.id } ?? 0
+                OperProgressPlanCard(
+                    plan: $plan,
+                    isExpanded: expansionBinding(for: plan.id),
+                    index: index,
+                    skillCount: skillCount(for: plan),
+                    displayName: displayName(for: plan),
+                    avatarID: operatorID(for: plan),
+                    onDelete: { removePlan(plan) })
+            }
             .disabled(viewModel.status != .idle)
         }
     }
@@ -230,6 +281,8 @@ private struct OperProgressPlanCard: View {
     @State private var levelValue: Int
     @State private var masteryEnabled: [Bool]
     @State private var masteryValues: [Int]
+    /// 头部悬停态：悬停时徽标区隐、删除按钮现（对齐 WPF 两处 IsMouseOver 触发器）。
+    @State private var isHovered = false
 
     init(
         plan: Binding<OperProgressPlan>,
@@ -292,44 +345,83 @@ private struct OperProgressPlanCard: View {
                         .foregroundStyle(.secondary)
                     OperProgressAvatar(id: avatarID, size: 18)
                     Text(displayName)
-                    targetSummary
+                    // 悬停时徽标区让位给删除按钮（对齐 WPF 徽标 Grid 的 IsMouseOver 隐显触发器）
+                    if !isHovered {
+                        targetSummary
+                    }
                     Spacer(minLength: 8)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-
-            Button {
-                onDelete()
-            } label: {
-                Image(systemName: "trash")
-                    .foregroundStyle(.secondary)
+            .overlay(alignment: .trailing) {
+                if isHovered {
+                    Button {
+                        onDelete()
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("删除")
+                }
             }
-            .buttonStyle(.plain)
-            .help("删除")
+        }
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 
+    /// 目标摘要：精英化角标图 / 技能等级四角框 / 专精三圆角标+技能序号
+    /// （对齐 WPF xaml:194-298 的三处图形；等级框与专精图标互斥显隐——
+    /// 等级框仅在「设定等级且无任何专精」时显示）。
     @ViewBuilder private var targetSummary: some View {
         if plan.elite > 0 {
-            badge("精英\(plan.elite)")
+            eliteIcon(plan.elite)
         }
-        if plan.skillLevel > 0 {
-            badge("技能\(plan.skillLevel)")
+        if plan.skillLevel > 0, plan.skillMastery.allSatisfy({ $0 <= 0 }) {
+            skillLevelFrame(plan.skillLevel)
         }
         ForEach(0..<3, id: \.self) { skill in
             if skill < skillCount, masteryValue(skill) > 0 {
-                badge("技能\(skill + 1)专\(plan.skillMastery[skill])")
+                masteryBadge(skill)
             }
         }
     }
 
-    private func badge(_ text: String) -> some View {
-        Text(text)
-            .font(.caption)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Color.secondary.opacity(0.15), in: Capsule())
+    /// 精英化角标：上游 WPF 同款 Elite_N.png（40×30/40×38），16 高等比 + 轻投影。
+    private func eliteIcon(_ elite: Int) -> some View {
+        Image("OperElite\(elite)")
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 16, height: 16)
+            .shadow(color: .black.opacity(0.8), radius: 4, y: 0.5)
+    }
+
+    /// 技能等级四角框：48 设计稿的角括号等比缩到 16×16，中心数字
+    /// （对齐 WPF Path Data M 0,14 L 0,0 L 14,0 …，Stroke=PrimaryTextBrush 1.5、方头端点）。
+    private func skillLevelFrame(_ level: Int) -> some View {
+        ZStack {
+            CornerBracketShape()
+                .stroke(Color.primary, style: StrokeStyle(lineWidth: 1.5, lineCap: .square, lineJoin: .miter))
+            Text("\(level)")
+                .font(.system(size: 12))
+                .foregroundStyle(.primary)
+        }
+        .frame(width: 16, height: 16)
+    }
+
+    /// 专精角标：品字三圆按等级点亮 + 右上技能序号（对齐 WPF SkillSpecializationIcon + TextBlock）。
+    private func masteryBadge(_ skill: Int) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            OperProgressMasteryIcon(level: masteryValue(skill), size: 16)
+            Text("\(skill + 1)")
+                .font(.system(size: 11))
+                .foregroundStyle(.primary)
+                .shadow(color: .black.opacity(0.8), radius: 3, y: 0.5)
+        }
+        .fixedSize()
     }
 
     private func masteryValue(_ skill: Int) -> Int {
@@ -447,10 +539,12 @@ private struct OperProgressPlanCard: View {
     private func setLevelValue(_ value: Int) {
         levelValue = value
         levelEnabled = value > 0
-        // 专精前置为 7 级：设定 2–6 级目标时专精不共存，清空三行专精（值保留，重新勾选可恢复）。
+        // 专精前置为 7 级：设定 2–6 级目标时专精不共存，专精值归零
+        // （对齐 WPF MainSkillLevel setter——值清零而非仅取消勾选，重新勾选自动得专 3）。
         if value > 0 && value < 7 {
             for skill in 0..<3 {
                 masteryEnabled[skill] = false
+                masteryValues[skill] = 0
             }
         }
         writeBack()
@@ -484,6 +578,67 @@ private struct OperProgressPlanCard: View {
         plan.skillMastery = (0..<3).map { skill in
             (masteryEnabled[skill] && skill < skillCount) ? masteryValues[skill] : 0
         }
+    }
+}
+
+// MARK: - 目标摘要图形
+
+/// 技能等级四角框：角括号描边（对齐 WPF 48×48 设计稿 Path 的等比缩放——
+/// 括号臂长 14/48 ≈ 宽度 29%，线宽按绝对像素 1.5 不随缩放）。
+private struct CornerBracketShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let arm = min(rect.width, rect.height) * (14.0 / 48.0)
+        // 左上
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + arm))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX + arm, y: rect.minY))
+        // 右上
+        path.move(to: CGPoint(x: rect.maxX - arm, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + arm))
+        // 左下
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY - arm))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + arm, y: rect.maxY))
+        // 右下
+        path.move(to: CGPoint(x: rect.maxX - arm, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - arm))
+        return path
+    }
+}
+
+/// 专精等级角标：品字排布三圆点，按专精等级逐步点亮——专 1 亮上圆、专 2 加亮右下圆、
+/// 专 3 全亮（对齐 WPF SkillSpecializationIcon：11×11 设计稿坐标固定、等比缩放、
+/// 亮 #FFFFFF / 灭 #555555、轻投影）。
+private struct OperProgressMasteryIcon: View {
+    let level: Int
+    var size: CGFloat = 16
+
+    var body: some View {
+        let scale = size / 11
+        let dot = 4 * scale
+        return ZStack {
+            Circle()
+                .fill(Self.color(on: level >= 1))
+                .frame(width: dot, height: dot)
+                .position(x: (3.6 + 2) * scale, y: (1 + 2) * scale)
+            Circle()
+                .fill(Self.color(on: level >= 2))
+                .frame(width: dot, height: dot)
+                .position(x: (6 + 2) * scale, y: (6 + 2) * scale)
+            Circle()
+                .fill(Self.color(on: level >= 3))
+                .frame(width: dot, height: dot)
+                .position(x: (0.8 + 2) * scale, y: (6 + 2) * scale)
+        }
+        .frame(width: size, height: size)
+        .shadow(color: .black.opacity(0.5), radius: 1, y: 0.5)
+    }
+
+    private static func color(on: Bool) -> Color {
+        on ? .white : Color(red: 0x55 / 255.0, green: 0x55 / 255.0, blue: 0x55 / 255.0)
     }
 }
 

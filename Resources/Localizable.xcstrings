@@ -15,34 +15,90 @@
       }
     },
     "专精 1" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mastery 1"
+          }
+        }
+      }
     },
     "专精 2" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mastery 2"
+          }
+        }
+      }
     },
     "专精 3" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mastery 3"
+          }
+        }
+      }
     },
     "先锋" : {
 
     },
     "全部折叠" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapse"
+          }
+        }
+      }
     },
     "医疗" : {
 
     },
     "在明日方舟工具箱中在线编辑计划" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit the plan online with Arknights Toolbox"
+          }
+        }
+      }
     },
     "尚未添加干员" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No operators yet"
+          }
+        }
+      }
     },
     "尚未添加干员，搜索选择后设置目标" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No operators yet. Search, select, then set targets"
+          }
+        }
+      }
     },
     "干员培养" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Operator Progression"
+          }
+        }
+      }
     },
     "干员培养 %@：%@" : {
 
@@ -51,7 +107,14 @@
 
     },
     "技能 %lld" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill %lld"
+          }
+        }
+      }
     },
     "技能 %lld 专精 %lld" : {
 
@@ -63,19 +126,47 @@
 
     },
     "技能基础等级" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill upgrade"
+          }
+        }
+      }
     },
     "技能等级 %lld" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skill level %lld"
+          }
+        }
+      }
     },
     "搜索干员" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search operators"
+          }
+        }
+      }
     },
     "术师" : {
 
     },
     "清空" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        }
+      }
     },
     "特种" : {
 
@@ -83,17 +174,28 @@
     "狙击" : {
 
     },
-    "精英%lld" : {
-
-    },
     "精英化" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elite"
+          }
+        }
+      }
     },
     "精英化 %lld" : {
 
     },
     "解析剪贴板" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read from Clipboard"
+          }
+        }
+      }
     },
     "计划 %lld 条" : {
 
@@ -4020,6 +4122,12 @@
     },
     "删除" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5672,6 +5780,12 @@
     },
     "添加" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7373,7 +7487,62 @@
           }
         }
       }
+    },
+    "---" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "---"
+          }
+        }
+      }
+    },
+    "成功" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Success"
+          }
+        }
+      }
+    },
+    "失败" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed"
+          }
+        }
+      }
+    },
+    "跳过" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skipped"
+          }
+        }
+      }
+    },
+    "干员培养 %lld:%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Operator Progression %lld:%@ %@"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
 }
+
+
+
+
+
