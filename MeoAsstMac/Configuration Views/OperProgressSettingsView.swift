@@ -273,14 +273,8 @@ private struct OperProgressPlanCard: View {
     let avatarID: String?
     let onDelete: () -> Void
 
-    // 编辑态：勾选与目标值分开存放（对齐 WPF 条目 VM——取消勾选只把写回值归零，
-    // 目标值在卡片存续期间保留，重新勾选即恢复）。
-    @State private var eliteEnabled: Bool
-    @State private var eliteValue: Int
-    @State private var levelEnabled: Bool
-    @State private var levelValue: Int
-    @State private var masteryEnabled: [Bool]
-    @State private var masteryValues: [Int]
+    // 编辑态：互斥规则住在纯逻辑模型里（goal-0729d7 可测性抽取），卡片只做呈现与转发。
+    @State private var editor: OperProgressPlanEditor
     /// 头部悬停态：悬停时徽标区隐、删除按钮现（对齐 WPF 两处 IsMouseOver 触发器）。
     @State private var isHovered = false
 
@@ -301,14 +295,7 @@ private struct OperProgressPlanCard: View {
         self.avatarID = avatarID
         self.onDelete = onDelete
 
-        let value = plan.wrappedValue
-        let mastery = (0..<3).map { value.skillMastery.indices.contains($0) ? value.skillMastery[$0] : 0 }
-        _eliteEnabled = State(initialValue: value.elite > 0)
-        _eliteValue = State(initialValue: value.elite > 0 ? value.elite : 2)
-        _levelEnabled = State(initialValue: value.skillLevel > 0)
-        _levelValue = State(initialValue: value.skillLevel > 0 ? value.skillLevel : 7)
-        _masteryEnabled = State(initialValue: mastery.map { $0 > 0 })
-        _masteryValues = State(initialValue: mastery.map { $0 > 0 ? $0 : 3 })
+        _editor = State(initialValue: OperProgressPlanEditor(plan: plan.wrappedValue))
     }
 
     var body: some View {
@@ -317,7 +304,7 @@ private struct OperProgressPlanCard: View {
             if isExpanded {
                 Divider()
                     .padding(.top, 8)
-                editor
+                editorSection
             }
         }
         .padding(8)
@@ -430,18 +417,18 @@ private struct OperProgressPlanCard: View {
 
     // MARK: 编辑区
 
-    private var editor: some View {
+    private var editorSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             pickerRow(
                 label: "精英化",
-                isOn: Binding(get: { eliteEnabled }, set: { setEliteEnabled($0) }),
-                value: Binding(get: { eliteValue }, set: { setEliteValue($0) }),
+                isOn: Binding(get: { editor.eliteEnabled }, set: { setEliteEnabled($0) }),
+                value: Binding(get: { editor.eliteValue }, set: { setEliteValue($0) }),
                 options: [(value: 0, label: "---"), (value: 1, label: "1"), (value: 2, label: "2")])
 
             pickerRow(
                 label: "技能基础等级",
-                isOn: Binding(get: { levelEnabled }, set: { setLevelEnabled($0) }),
-                value: Binding(get: { levelValue }, set: { setLevelValue($0) }),
+                isOn: Binding(get: { editor.levelEnabled }, set: { setLevelEnabled($0) }),
+                value: Binding(get: { editor.levelValue }, set: { setLevelValue($0) }),
                 options: [(value: 0, label: "---")]
                     + (2...7).map { (value: $0, label: "Lv. \($0)") })
 
@@ -483,7 +470,7 @@ private struct OperProgressPlanCard: View {
             Toggle(
                 "技能 \(skill + 1)",
                 isOn: Binding(
-                    get: { rowEnabled && masteryEnabled[skill] },
+                    get: { rowEnabled && editor.masteryEnabled[skill] },
                     set: { setMasteryEnabled(skill, $0) })
             )
             .toggleStyle(.checkbox)
@@ -497,7 +484,7 @@ private struct OperProgressPlanCard: View {
             Picker(
                 "",
                 selection: Binding(
-                    get: { masteryValues[skill] },
+                    get: { editor.masteryValues[skill] },
                     set: { setMasteryValue(skill, $0) })
             ) {
                 Text("---").tag(0)
@@ -512,72 +499,41 @@ private struct OperProgressPlanCard: View {
         }
     }
 
-    // MARK: 编辑规则（对齐 WPF OperProgressPlanItemViewModel）
+    // MARK: 编辑规则（互斥规则住 OperProgressPlanEditor，此处只转发）
 
     private func setEliteEnabled(_ on: Bool) {
-        if on && eliteValue == 0 {
-            eliteValue = 2
-        }
-        eliteEnabled = on
+        editor.setEliteEnabled(on)
         writeBack()
     }
 
     private func setEliteValue(_ value: Int) {
-        eliteValue = value
-        eliteEnabled = value > 0
+        editor.setEliteValue(value)
         writeBack()
     }
 
     private func setLevelEnabled(_ on: Bool) {
-        if on && levelValue == 0 {
-            levelValue = 7
-        }
-        levelEnabled = on
+        editor.setLevelEnabled(on)
         writeBack()
     }
 
     private func setLevelValue(_ value: Int) {
-        levelValue = value
-        levelEnabled = value > 0
-        // 专精前置为 7 级：设定 2–6 级目标时专精不共存，专精值归零
-        // （对齐 WPF MainSkillLevel setter——值清零而非仅取消勾选，重新勾选自动得专 3）。
-        if value > 0 && value < 7 {
-            for skill in 0..<3 {
-                masteryEnabled[skill] = false
-                masteryValues[skill] = 0
-            }
-        }
+        editor.setLevelValue(value)
         writeBack()
     }
 
     private func setMasteryEnabled(_ skill: Int, _ on: Bool) {
-        if on && masteryValues[skill] == 0 {
-            // 勾选且未选档位：自动设为专 3（经 setMasteryValue 走补足等级的规则）。
-            setMasteryValue(skill, 3)
-            return
-        }
-        masteryEnabled[skill] = on
+        editor.setMasteryEnabled(skill, on)
         writeBack()
     }
 
     private func setMasteryValue(_ skill: Int, _ value: Int) {
-        masteryValues[skill] = value
-        masteryEnabled[skill] = value > 0
-        // 设专精且已有技能等级目标：自动补至 7 级（等级未设定时保持不设定）。
-        if value > 0 && levelValue != 0 {
-            levelValue = 7
-            levelEnabled = true
-        }
+        editor.setMasteryValue(skill, value)
         writeBack()
     }
 
-    /// 取消勾选 = 该维度目标归 0（写回配置时不带该键）；超出技能数的专精行不参与写回。
+    /// 写回配置：取消勾选 = 该维度目标归 0（不带该键）；超出技能数的专精行不参与写回。
     private func writeBack() {
-        plan.elite = eliteEnabled ? eliteValue : 0
-        plan.skillLevel = levelEnabled ? levelValue : 0
-        plan.skillMastery = (0..<3).map { skill in
-            (masteryEnabled[skill] && skill < skillCount) ? masteryValues[skill] : 0
-        }
+        editor.writeBack(into: &plan, skillCount: skillCount)
     }
 }
 

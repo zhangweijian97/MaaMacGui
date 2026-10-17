@@ -1691,6 +1691,7 @@ extension MAAViewModel {
 
     /// Summary 后移除已完成条目并触发配置页重建（WPF `RemoveFinishedPlans` → `RefreshUI`）。
     /// 完成判据=该条目全维度清零（elite/skillLevel/专精全 0），不是 success 计数。
+    /// 移除判据住在 `OperProgressCallbackConsumer`（goal-0729d7 可测性抽取）。
     private func removeFinishedOperProgressPlans(coreID: Int32?) {
         guard let id = taskID(coreID: coreID),
             case .operProgress(var config) = tasks[id]
@@ -1698,9 +1699,7 @@ extension MAAViewModel {
             return
         }
 
-        let unfinished = config.plans.filter { plan in
-            plan.elite != 0 || plan.skillLevel != 0 || plan.skillMastery.contains { $0 > 0 }
-        }
+        let unfinished = OperProgressCallbackConsumer.removingFinishedPlans(from: config.plans)
         if unfinished.count != config.plans.count {
             config.plans = unfinished
             tasks[id] = config.projectedTask
@@ -1711,6 +1710,7 @@ extension MAAViewModel {
 
     /// Detail 回调：达成维度清零写回配置并持久化（WPF `ProcOperProgressMsg`——
     /// 不实时刷 UI，刷新统一在 Summary 之后由 `removeFinishedOperProgressPlans` 触发）。
+    /// 匹配与清零比对住在 `OperProgressCallbackConsumer`（goal-0729d7 可测性抽取）。
     private func consumeOperProgressDetail(_ detail: OperProgressDetailDetails, coreID: Int32?) {
         let callbackRole = detail.role.flatMap(OperProgressRole.init(rawValue:))
         guard let id = taskID(coreID: coreID),
@@ -1720,38 +1720,21 @@ extension MAAViewModel {
             return
         }
 
+        let snapshot = OperProgressCallbackSnapshot(
+            role: detail.role,
+            name: detail.name,
+            elite: detail.elite,
+            skillLevel: detail.skill_level,
+            skillMastery: detail.skill_mastery)
+        let outcome = OperProgressCallbackConsumer.consumeDetail(snapshot, in: config.plans)
+
         // 匹配条目：先按职业+名字，退化为仅名字（对齐 WPF 两段 FirstOrDefault）
-        guard let index = config.plans.firstIndex(where: { $0.role == callbackRole && $0.name == detail.name })
-            ?? config.plans.firstIndex(where: { $0.name == detail.name })
-        else {
+        guard let index = outcome.matchedIndex else {
             logError(verbatim: "干员培养回调找不到匹配的计划条目：\(detail.name)")
             return
         }
-
-        var plan = config.plans[index]
-        var isModified = false
-        if let elite = detail.elite, elite >= plan.elite {
-            plan.elite = 0
-            isModified = true
-        }
-        if let skillLevel = detail.skill_level, skillLevel >= plan.skillLevel {
-            plan.skillLevel = 0
-            isModified = true
-        }
-        if let mastery = detail.skill_mastery {
-            var spec = plan.skillMastery
-            var specChanged = false
-            for skill in 0..<min(3, mastery.count) where mastery[skill] >= spec[skill] {
-                spec[skill] = 0
-                specChanged = true
-            }
-            if specChanged {
-                plan.skillMastery = spec
-                isModified = true
-            }
-        }
-        if isModified {
-            config.plans[index] = plan
+        if outcome.modified {
+            config.plans = outcome.plans
             tasks[id] = config.projectedTask
         }
 
