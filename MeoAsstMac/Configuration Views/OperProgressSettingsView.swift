@@ -39,17 +39,25 @@ struct OperProgressSettingsView: View {
     }
 
     var body: some View {
+        // 虚拟化 + 固定区吸顶（对齐 WPF：链接随外层面板滚动，按钮行与干员选择固定，
+        // 列表惰性实例化——LazyVStack + Section header 吸顶）。
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            LazyVStack(alignment: .leading, spacing: 12, pinnedViews: [.sectionHeaders]) {
                 Link("在明日方舟工具箱中在线编辑计划", destination: Self.toolboxURL)
                     .font(.callout)
 
-                actionButtons
-                    .frame(maxWidth: .infinity)
+                Section {
+                    planList
+                } header: {
+                    VStack(spacing: 12) {
+                        actionButtons
+                            .frame(maxWidth: .infinity)
 
-                operatorPicker
-
-                planList
+                        operatorPicker
+                    }
+                    .padding(.vertical, 4)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                }
             }
             .padding()
         }
@@ -157,26 +165,25 @@ struct OperProgressSettingsView: View {
 
     // MARK: - 计划列表
 
+    /// 卡片作为 Section 内容直接挂在 LazyVStack 上（惰性实例化）；不套全量容器。
     @ViewBuilder private var planList: some View {
         if config.plans.isEmpty {
             Text("尚未添加干员，搜索选择后设置目标")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         } else {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach($config.plans) { $plan in
-                    let index = config.plans.firstIndex { $0.id == plan.id } ?? 0
-                    OperProgressPlanCard(
-                        plan: $plan,
-                        isExpanded: expansionBinding(for: plan.id),
-                        index: index,
-                        skillCount: skillCount(for: plan),
-                        displayName: displayName(for: plan),
-                        avatarID: operatorID(for: plan),
-                        onDelete: { removePlan(plan) })
-                }
-            }
             // 运行中列表不可编辑（对齐 WPF：任务运行时 ListBox 不响应交互）。
+            ForEach($config.plans) { $plan in
+                let index = config.plans.firstIndex { $0.id == plan.id } ?? 0
+                OperProgressPlanCard(
+                    plan: $plan,
+                    isExpanded: expansionBinding(for: plan.id),
+                    index: index,
+                    skillCount: skillCount(for: plan),
+                    displayName: displayName(for: plan),
+                    avatarID: operatorID(for: plan),
+                    onDelete: { removePlan(plan) })
+            }
             .disabled(viewModel.status != .idle)
         }
     }
