@@ -1,0 +1,165 @@
+{
+  "meta": {
+    "fixture": "golden-serialization —— 干员培养任务序列化黄金集（WPF AsstOperProgressTask.Serialize 语义）",
+    "generated": "2026-10-17",
+    "semantics_source": "本目录 AsstOperProgressTask.cs:31-58（Serialize 方法），计划记录定义见 OperProgressTask.cs:36（Plan record：Role, Name, Elite, SkillLevel, SkillMastery, ShowRole）",
+    "rules": [
+      "协议白名单仅 5 键：role / name / elite / skill_level / skill_mastery；ShowRole 不进协议",
+      "role 恒有，值为 OperatorRole 枚举成员名字符串；name 恒有",
+      "elite 仅 >0 时带键；skill_level 仅 >0 时带键；不满足则键整个不出现（不写 0）",
+      "skill_mastery 仅在 3 位中任一位 >0 时带键；数组恒 3 元素，内部 0 原样保留；数组长度不因 2 技能干员收缩",
+      "外层 {\"plans\": [...]}；空列表输出 {\"plans\": []}。注意：『空计划不 append』是 VM 层 SerializeTask 的闸（OperProgressTaskUserControlModel.cs:273-276），两层语义独立，均需测试",
+      "键序 = WPF JObject 插入序：role, name, elite, skill_level, skill_mastery。JSON 对象键序语义无关——断言应做深度比较而非字符串比较（实跑证据见 observed_request_1017：Mac 侧请求键序不同但语义等价）"
+    ],
+    "role_enum_evidence": "枚举成员名取自 core 侧 role_task_name switch（本目录 OperProgressProcessTask-core.cpp:108-126：Pioneer/Warrior/Tank/Caster/Medic/Sniper/Special/Support）+ WPF 代码中的 Unknown（OperProgressPlanItemViewModel.cs:59,64）+ 实跑回调 \"role\":\"Warrior\"（fixture-callbacks-1017.json）",
+    "observed_request_1017": {
+      "time": "2026-10-17 21:25:08.760",
+      "source": "~/Library/Application Support/debug/asst.log append_task 行",
+      "json": {"role": "Warrior", "elite": 2, "name": "克莱门莎", "skill_level": 7, "skill_mastery": [0, 3, 3]},
+      "note": "该请求由 Mac 侧当时实现发出：键序为 role,elite,name,skill_level,skill_mastery（elite 在 name 前），与 WPF 插入序不同但语义等价；[0,3,3] 印证『数组内 0 保留、长度 3』"
+    },
+    "usage": "每组 case 将 input.plans 喂给被测序列化器，输出与 expected_outer 深度比较（忽略键序）；case 10-empty-plans 另需在 VM 层断言不产生任务请求"
+  },
+  "cases": [
+    {
+      "id": 1,
+      "name": "仅精英化（skill_level/skill_mastery 均不设）",
+      "input": {
+        "plans": [
+          {"role": "Pioneer", "name": "讯使", "elite": 2, "skill_level": 0, "skill_mastery": [0, 0, 0], "show_role": false}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Pioneer", "name": "讯使", "elite": 2}
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "name": "仅技能等级（无精英化、无专精）",
+      "input": {
+        "plans": [
+          {"role": "Warrior", "name": "陈", "elite": 0, "skill_level": 7, "skill_mastery": [0, 0, 0], "show_role": false}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Warrior", "name": "陈", "skill_level": 7}
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "name": "仅专精（单技能位，含内部 0）",
+      "input": {
+        "plans": [
+          {"role": "Medic", "name": "凯尔希", "elite": 0, "skill_level": 0, "skill_mastery": [0, 1, 0], "show_role": false}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Medic", "name": "凯尔希", "skill_mastery": [0, 1, 0]}
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "name": "混合：三维度全设（与 10-17 实跑请求同型，专精拉满）",
+      "input": {
+        "plans": [
+          {"role": "Warrior", "name": "克莱门莎", "elite": 2, "skill_level": 7, "skill_mastery": [3, 3, 3], "show_role": false}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Warrior", "name": "克莱门莎", "elite": 2, "skill_level": 7, "skill_mastery": [3, 3, 3]}
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "name": "专精含 0 值（键存在、数组内部 0 原样保留）",
+      "input": {
+        "plans": [
+          {"role": "Sniper", "name": "能天使", "elite": 0, "skill_level": 0, "skill_mastery": [3, 0, 2], "show_role": false}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Sniper", "name": "能天使", "skill_mastery": [3, 0, 2]}
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "name": "skill_level 与 skill_mastery 并存（序列化层不裁决互斥，互斥是 UI 层规则）",
+      "input": {
+        "plans": [
+          {"role": "Caster", "name": "艾雅法拉", "elite": 0, "skill_level": 7, "skill_mastery": [0, 1, 0], "show_role": false}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Caster", "name": "艾雅法拉", "skill_level": 7, "skill_mastery": [0, 1, 0]}
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "name": "空 plans（Serialize 层输出空数组；VM 层另有『不 append』闸）",
+      "input": {
+        "plans": []
+      },
+      "expected_outer": {
+        "plans": []
+      }
+    },
+    {
+      "id": 8,
+      "name": "多干员（不同键组合混排，顺序保持）",
+      "input": {
+        "plans": [
+          {"role": "Pioneer", "name": "德克萨斯", "elite": 1, "skill_level": 0, "skill_mastery": [0, 0, 0], "show_role": false},
+          {"role": "Warrior", "name": "拉普兰德", "elite": 0, "skill_level": 7, "skill_mastery": [0, 2, 0], "show_role": false},
+          {"role": "Special", "name": "红", "elite": 2, "skill_level": 0, "skill_mastery": [1, 1, 0], "show_role": true}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Pioneer", "name": "德克萨斯", "elite": 1},
+          {"role": "Warrior", "name": "拉普兰德", "skill_level": 7, "skill_mastery": [0, 2, 0]},
+          {"role": "Special", "name": "红", "elite": 2, "skill_mastery": [1, 1, 0]}
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "name": "全零计划（仅 role+name 两键；VM 层 RemoveFinishedPlans 会把这种条目当已完成移除，但 Serialize 层收到即输出两键）",
+      "input": {
+        "plans": [
+          {"role": "Tank", "name": "星熊", "elite": 0, "skill_level": 0, "skill_mastery": [0, 0, 0], "show_role": false}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Tank", "name": "星熊"}
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "name": "双技能干员裁剪位（第三位为 0：数组仍 3 元素，长度不收缩）",
+      "input": {
+        "plans": [
+          {"role": "Support", "name": "梓兰", "elite": 0, "skill_level": 0, "skill_mastery": [3, 3, 0], "show_role": false}
+        ]
+      },
+      "expected_outer": {
+        "plans": [
+          {"role": "Support", "name": "梓兰", "skill_mastery": [3, 3, 0]}
+        ]
+      }
+    }
+  ]
+}

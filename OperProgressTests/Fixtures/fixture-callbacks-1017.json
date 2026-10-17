@@ -1,0 +1,977 @@
+{
+  "meta": {
+    "fixture": "fixture-callbacks-1017 —— 干员培养（OperProgress）回调回放夹具",
+    "generated": "2026-10-17，由实施代理从运行日志机械提取（python3 脚本，逐行解析后原样内嵌）",
+    "sources": {
+      "asst_log": "~/Library/Application Support/debug/asst.log（原始回调体来源：Assistant::append_callback INF 行，含完整 JSON 消息结构）",
+      "gui_log": "~/Library/Application Support/debug/gui.log（GUI 侧格式化显示行，见 gui_log_observed）"
+    },
+    "window": "2026-10-17 21:25:29.674 - 21:29:59.590（taskchain=OperProgress, taskid=5, uuid=11111111）",
+    "scenario_coverage": "干员克莱门莎（role=Warrior/近卫）单干员轮次。请求计划：elite=2, skill_level=7, skill_mastery=[0,3,3]（见 meta.request）。三个维度各发一条 OperProgressDetail：① 精英化2 达成（result=Success, result_detail=Completed）；② 技能等级7 达成（Success/Completed）；③ 技能2专精1 达成（Success/PrerequisiteTraining，前置培养路径，达成度[0,1,0]，未达目标[0,3,3]）。Summary 终态：success=3, failed=0, skipped=0；finished[0] 为达成态快照（skill_mastery=[0,1,0]），不是计划目标本身。附带材料合成子流程 5 事件（MaterialSynthesis*：聚合剂×2, material_id=30115）。WPF 语义回放预期：Detail#1 清 elite→0 写回；Detail#2 清 skill_level→0 写回；Detail#3 逐位比对 [0,1,0] vs 剩余目标 [0,3,3] 无位达成→不写回；Summary 后 RemoveFinishedPlans：该计划 mastery 仍有非零 → 保留不移除。success=3 不等于全维度完成（判据=全维度清零，非 success 计数）。",
+    "limitations": [
+      "gui.log 只有格式化显示行，无原始回调体；原始 JSON 取自 asst.log 的 append_callback INF 行（消息结构完整，但这是 core 侧日志而非 GUI 收包 trace）。",
+      "本批为单干员、全成功（failed=0, skipped=0）轮次：failed/skipped 非零、多干员、Detail 无匹配计划、role 回退匹配等分支未覆盖，需另行构造。",
+      "排除 325 条通用导航 SubTaskStart/SubTaskCompleted（ProcessTask 模板点击事件，details 仅为模板匹配 rect/score）；如需全量按 taskchain=OperProgress 重提即可。"
+    ],
+    "message_selection": {
+      "included_events": {
+        "TaskChainStart": 1,
+        "SubTaskStart": 1,
+        "SubTaskError": 36,
+        "SubTaskExtraInfo": 9,
+        "SubTaskCompleted": 1,
+        "TaskChainCompleted": 1,
+        "AllTasksCompleted": 1
+      },
+      "included_extra_info_what": {
+        "MaterialSynthesisStart": 1,
+        "MaterialSynthesisMaterial": 1,
+        "MaterialSynthesisOperator": 1,
+        "MaterialSynthesisCraft": 1,
+        "MaterialSynthesisCompleted": 1,
+        "OperProgressDetail": 3,
+        "OperProgressSummary": 1
+      },
+      "excluded_navigation_noise": 325,
+      "note": "SubTaskError 在 MAA 管线里是流程标记（如 EliteUpMaterialMissing=材料不足走合成支线）非真错误，details 为空对象、first 字段为标记任务名，全部保留供分支分析。"
+    },
+    "request": {
+      "time": "2026-10-17 21:25:08.760",
+      "line": "[2026-10-17 21:25:08.760][INF][Px66854][Tx1191] │││ append_task OperProgress {\"plans\":[{\"role\":\"Warrior\",\"elite\":2,\"name\":\"克莱门莎\",\"skill_level\":7,\"skill_mastery\":[0,3,3]}]}",
+      "parsed": {
+        "plans": [
+          {
+            "role": "Warrior",
+            "elite": 2,
+            "name": "克莱门莎",
+            "skill_level": 7,
+            "skill_mastery": [
+              0,
+              3,
+              3
+            ]
+          }
+        ]
+      }
+    },
+    "replay_hint": "按 messages 数组顺序回放；GUI 消费侧只对 event=SubTaskExtraInfo 且 what∈{OperProgressDetail, OperProgressSummary} 的 4 条有行为，其余为过滤噪音与场景上下文。"
+  },
+  "messages": [
+    {
+      "time": "2026-10-17 21:25:29.674",
+      "line": "[2026-10-17 21:25:29.674][INF][Px66854][Tx17103] │││ Assistant::append_callback | TaskChainStart {\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "TaskChainStart",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:25:29.675",
+      "line": "[2026-10-17 21:25:29.675][INF][Px66854][Tx17103] │││ Assistant::append_callback | SubTaskStart {\"class\":\"asst::OperProgressProcessTask\",\"details\":{},\"subtask\":\"OperProgressProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskStart",
+        "class": "asst::OperProgressProcessTask",
+        "details": {},
+        "subtask": "OperProgressProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:26:11.930",
+      "line": "[2026-10-17 21:26:11.930][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@EliteUpMaterialMissing\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@EliteUpMaterialMissing"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:26:14.728",
+      "line": "[2026-10-17 21:26:14.728][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@EliteUpMaterialMissing\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@EliteUpMaterialMissing"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:26:50.101",
+      "line": "[2026-10-17 21:26:50.101][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"ChooseChipTabSelected\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "ChooseChipTabSelected"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:15.001",
+      "line": "[2026-10-17 21:27:15.001][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@EliteUpMaterial1JumpProcessingUnable\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@EliteUpMaterial1JumpProcessingUnable"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:17.266",
+      "line": "[2026-10-17 21:27:17.266][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::MaterialSynthesisTaskPlugin\",\"details\":{},\"subtask\":\"MaterialSynthesisTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"MaterialSynthesisStart\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::MaterialSynthesisTaskPlugin",
+        "details": {},
+        "subtask": "MaterialSynthesisTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "MaterialSynthesisStart"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:18.982",
+      "line": "[2026-10-17 21:27:18.982][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@Satisfied\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@Satisfied"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:20.376",
+      "line": "[2026-10-17 21:27:20.376][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::MaterialSynthesisTaskPlugin\",\"details\":{\"count\":2,\"depth\":0,\"material\":\"聚合剂\",\"material_id\":\"30115\",\"rarity\":4},\"subtask\":\"MaterialSynthesisTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"MaterialSynthesisMaterial\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::MaterialSynthesisTaskPlugin",
+        "details": {
+          "count": 2,
+          "depth": 0,
+          "material": "聚合剂",
+          "material_id": "30115",
+          "rarity": 4
+        },
+        "subtask": "MaterialSynthesisTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "MaterialSynthesisMaterial"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:20.777",
+      "line": "[2026-10-17 21:27:20.777][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@Ingredient1Available\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@Ingredient1Available"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:21.175",
+      "line": "[2026-10-17 21:27:21.175][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@Ingredient1Unavailable\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@Ingredient1Unavailable"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:21.573",
+      "line": "[2026-10-17 21:27:21.573][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@Ingredient2Available\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@Ingredient2Available"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:21.968",
+      "line": "[2026-10-17 21:27:21.968][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@Ingredient2Unavailable\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@Ingredient2Unavailable"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:22.372",
+      "line": "[2026-10-17 21:27:22.372][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@Ingredient3Available\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@Ingredient3Available"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:22.767",
+      "line": "[2026-10-17 21:27:22.767][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@Ingredient3Unavailable\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@Ingredient3Unavailable"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:25.820",
+      "line": "[2026-10-17 21:27:25.820][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::MaterialSynthesisTaskPlugin\",\"details\":{\"material\":\"聚合剂\",\"material_id\":\"30115\",\"reason\":\"missing\"},\"subtask\":\"MaterialSynthesisTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"MaterialSynthesisOperator\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::MaterialSynthesisTaskPlugin",
+        "details": {
+          "material": "聚合剂",
+          "material_id": "30115",
+          "reason": "missing"
+        },
+        "subtask": "MaterialSynthesisTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "MaterialSynthesisOperator"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:55.629",
+      "line": "[2026-10-17 21:27:55.629][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@LowMood\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@LowMood"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:56.106",
+      "line": "[2026-10-17 21:27:56.106][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@LowMood\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@LowMood"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:56.533",
+      "line": "[2026-10-17 21:27:56.533][INF][Px66854][Tx17103] │││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"MiniGame@MaterialSynthesis@LowMood\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "MiniGame@MaterialSynthesis@LowMood"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:27:56.533",
+      "line": "[2026-10-17 21:27:56.533][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::MaterialSynthesisTaskPlugin\",\"details\":{\"count\":2,\"material\":\"聚合剂\",\"material_id\":\"30115\"},\"subtask\":\"MaterialSynthesisTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"MaterialSynthesisCraft\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::MaterialSynthesisTaskPlugin",
+        "details": {
+          "count": 2,
+          "material": "聚合剂",
+          "material_id": "30115"
+        },
+        "subtask": "MaterialSynthesisTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "MaterialSynthesisCraft"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:06.094",
+      "line": "[2026-10-17 21:28:06.094][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::MaterialSynthesisTaskPlugin\",\"details\":{},\"subtask\":\"MaterialSynthesisTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"MaterialSynthesisCompleted\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::MaterialSynthesisTaskPlugin",
+        "details": {},
+        "subtask": "MaterialSynthesisTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "MaterialSynthesisCompleted"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:11.565",
+      "line": "[2026-10-17 21:28:11.565][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@EliteUpMaterial2Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@EliteUpMaterial2Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:14.268",
+      "line": "[2026-10-17 21:28:14.268][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@EliteUpMaterialMissing\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@EliteUpMaterialMissing"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:23.207",
+      "line": "[2026-10-17 21:28:23.207][INF][Px66854][Tx17103] │││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::OperProgressProcessTask\",\"details\":{\"elite\":2,\"name\":\"克莱门莎\",\"result\":\"Success\",\"result_detail\":\"Completed\",\"role\":\"Warrior\"},\"subtask\":\"OperProgressProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"OperProgressDetail\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::OperProgressProcessTask",
+        "details": {
+          "elite": 2,
+          "name": "克莱门莎",
+          "result": "Success",
+          "result_detail": "Completed",
+          "role": "Warrior"
+        },
+        "subtask": "OperProgressProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "OperProgressDetail"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:26.296",
+      "line": "[2026-10-17 21:28:26.296][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpSkillSummaryRequired\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpSkillSummaryRequired"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:27.359",
+      "line": "[2026-10-17 21:28:27.359][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpMaterial1Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpMaterial1Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:30.339",
+      "line": "[2026-10-17 21:28:30.339][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpSkillSummaryRequired\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpSkillSummaryRequired"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:31.436",
+      "line": "[2026-10-17 21:28:31.436][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpMaterial1Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpMaterial1Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:34.437",
+      "line": "[2026-10-17 21:28:34.437][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpSkillSummaryRequired\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpSkillSummaryRequired"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:35.505",
+      "line": "[2026-10-17 21:28:35.505][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpMaterial1Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpMaterial1Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:38.449",
+      "line": "[2026-10-17 21:28:38.449][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpSkillSummaryRequired\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpSkillSummaryRequired"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:39.532",
+      "line": "[2026-10-17 21:28:39.532][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpMaterial1Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpMaterial1Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:42.538",
+      "line": "[2026-10-17 21:28:42.538][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpSkillSummaryRequired\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpSkillSummaryRequired"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:43.605",
+      "line": "[2026-10-17 21:28:43.605][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpMaterial1Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpMaterial1Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:46.570",
+      "line": "[2026-10-17 21:28:46.570][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpSkillSummaryRequired\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpSkillSummaryRequired"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:47.637",
+      "line": "[2026-10-17 21:28:47.637][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpMaterial1Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpMaterial1Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:48.674",
+      "line": "[2026-10-17 21:28:48.674][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@SkillUpMaterial2Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@SkillUpMaterial2Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:28:53.166",
+      "line": "[2026-10-17 21:28:53.166][INF][Px66854][Tx17103] │││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::OperProgressProcessTask\",\"details\":{\"name\":\"克莱门莎\",\"result\":\"Success\",\"result_detail\":\"Completed\",\"role\":\"Warrior\",\"skill_level\":7},\"subtask\":\"OperProgressProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"OperProgressDetail\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::OperProgressProcessTask",
+        "details": {
+          "name": "克莱门莎",
+          "result": "Success",
+          "result_detail": "Completed",
+          "role": "Warrior",
+          "skill_level": 7
+        },
+        "subtask": "OperProgressProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "OperProgressDetail"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:03.466",
+      "line": "[2026-10-17 21:29:03.466][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"InfrastTrainingCompleted2\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "InfrastTrainingCompleted2"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:05.625",
+      "line": "[2026-10-17 21:29:05.625][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"InfrastTrainingMasterybusy\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "InfrastTrainingMasterybusy"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:24.992",
+      "line": "[2026-10-17 21:29:24.992][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@MasterySelectSkillMaxAlready2\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@MasterySelectSkillMaxAlready2"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:29.427",
+      "line": "[2026-10-17 21:29:29.427][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@MasterySkillSummaryRequired\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@MasterySkillSummaryRequired"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:31.492",
+      "line": "[2026-10-17 21:29:31.492][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@MasteryMaterial1Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@MasteryMaterial1Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:33.526",
+      "line": "[2026-10-17 21:29:33.526][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@MasteryMaterial2Required\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@MasteryMaterial2Required"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:35.595",
+      "line": "[2026-10-17 21:29:35.595][INF][Px66854][Tx17103] ││││ Assistant::append_callback | SubTaskError {\"class\":\"asst::ProcessTask\",\"details\":{},\"first\":[\"OperProgress@MasteryMaterialMissing\"],\"pre_task\":\"\",\"subtask\":\"ProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskError",
+        "class": "asst::ProcessTask",
+        "details": {},
+        "first": [
+          "OperProgress@MasteryMaterialMissing"
+        ],
+        "pre_task": "",
+        "subtask": "ProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:59.589",
+      "line": "[2026-10-17 21:29:59.589][INF][Px66854][Tx17103] │││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::OperProgressProcessTask\",\"details\":{\"name\":\"克莱门莎\",\"result\":\"Success\",\"result_detail\":\"PrerequisiteTraining\",\"role\":\"Warrior\",\"skill_mastery\":[0,1,0]},\"subtask\":\"OperProgressProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"OperProgressDetail\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::OperProgressProcessTask",
+        "details": {
+          "name": "克莱门莎",
+          "result": "Success",
+          "result_detail": "PrerequisiteTraining",
+          "role": "Warrior",
+          "skill_mastery": [
+            0,
+            1,
+            0
+          ]
+        },
+        "subtask": "OperProgressProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "OperProgressDetail"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:59.590",
+      "line": "[2026-10-17 21:29:59.590][INF][Px66854][Tx17103] │││ Assistant::append_callback | SubTaskExtraInfo {\"class\":\"asst::OperProgressProcessTask\",\"details\":{\"failed\":0,\"finished\":[{\"elite\":2,\"name\":\"克莱门莎\",\"role\":\"Warrior\",\"skill_level\":7,\"skill_mastery\":[0,1,0]}],\"skipped\":0,\"success\":3},\"subtask\":\"OperProgressProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\",\"what\":\"OperProgressSummary\"}",
+      "parsed": {
+        "event": "SubTaskExtraInfo",
+        "class": "asst::OperProgressProcessTask",
+        "details": {
+          "failed": 0,
+          "finished": [
+            {
+              "elite": 2,
+              "name": "克莱门莎",
+              "role": "Warrior",
+              "skill_level": 7,
+              "skill_mastery": [
+                0,
+                1,
+                0
+              ]
+            }
+          ],
+          "skipped": 0,
+          "success": 3
+        },
+        "subtask": "OperProgressProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111",
+        "what": "OperProgressSummary"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:59.590",
+      "line": "[2026-10-17 21:29:59.590][INF][Px66854][Tx17103] │││ Assistant::append_callback | SubTaskCompleted {\"class\":\"asst::OperProgressProcessTask\",\"details\":{},\"subtask\":\"OperProgressProcessTask\",\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "SubTaskCompleted",
+        "class": "asst::OperProgressProcessTask",
+        "details": {},
+        "subtask": "OperProgressProcessTask",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:59.590",
+      "line": "[2026-10-17 21:29:59.590][INF][Px66854][Tx17103] │││ Assistant::append_callback | TaskChainCompleted {\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "TaskChainCompleted",
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    },
+    {
+      "time": "2026-10-17 21:29:59.590",
+      "line": "[2026-10-17 21:29:59.590][INF][Px66854][Tx17103] │││ Assistant::append_callback | AllTasksCompleted {\"finished_tasks\":[4,5],\"taskchain\":\"OperProgress\",\"taskid\":5,\"uuid\":\"11111111\"}",
+      "parsed": {
+        "event": "AllTasksCompleted",
+        "finished_tasks": [
+          4,
+          5
+        ],
+        "taskchain": "OperProgress",
+        "taskid": 5,
+        "uuid": "11111111"
+      }
+    }
+  ],
+  "gui_log_observed": {
+    "_note": "Mac 当前实现（parity 清单基线 0b828a8）对本轮的实际显示输出（只记日志，无清零/移除行为，parity 简化#1）。注意：Detail 行缺序号——WPF 词条 OperProgress.Detail 格式为「干员培养 {序号}:{干员名} {status}」；result_detail（Completed/PrerequisiteTraining）未显示。",
+    "lines": [
+      {
+        "time": "2026-10-17 21:25:29",
+        "level": "trace",
+        "line": "开始任务：干员培养"
+      },
+      {
+        "time": "2026-10-17 21:27:17",
+        "level": "info",
+        "line": "开始自动合成材料"
+      },
+      {
+        "time": "2026-10-17 21:27:20",
+        "level": "trace",
+        "line": "当前材料：聚合剂，还需合成 2 个（第 1 层）"
+      },
+      {
+        "time": "2026-10-17 21:27:25",
+        "level": "trace",
+        "line": "正在为 聚合剂 选择加工站干员"
+      },
+      {
+        "time": "2026-10-17 21:27:56",
+        "level": "trace",
+        "line": "正在合成 聚合剂 × 2"
+      },
+      {
+        "time": "2026-10-17 21:28:06",
+        "level": "info",
+        "line": "材料合成完成"
+      },
+      {
+        "time": "2026-10-17 21:28:23",
+        "level": "info",
+        "line": "干员培养 克莱门莎：Success 精英化 2"
+      },
+      {
+        "time": "2026-10-17 21:28:53",
+        "level": "info",
+        "line": "干员培养 克莱门莎：Success 技能等级 7"
+      },
+      {
+        "time": "2026-10-17 21:29:59",
+        "level": "info",
+        "line": "干员培养 克莱门莎：Success 技能 2 专精 1"
+      },
+      {
+        "time": "2026-10-17 21:29:59",
+        "level": "info",
+        "line": "干员培养完成：成功 3，失败 0，跳过 0"
+      },
+      {
+        "time": "2026-10-17 21:29:59",
+        "level": "trace",
+        "line": "完成任务：干员培养"
+      },
+      {
+        "time": "2026-10-17 21:29:59",
+        "level": "trace",
+        "line": "任务已全部完成！（用时4:50秒）"
+      }
+    ]
+  }
+}
