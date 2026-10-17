@@ -67,6 +67,9 @@ struct OperProgressSettingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
             reloadDirectoryIfNeeded(force: true)
         }
+        // Summary 回调消费后整体重建（对齐 WPF RefreshUI 语义：卡片/展开态/滚动位置重置，
+        // 从写回后的配置重建编辑态）
+        .id(viewModel.operProgressRefreshToken)
     }
 
     // MARK: - 操作按钮行

@@ -1533,24 +1533,13 @@ extension MAAViewModel {
             } else {
                 logInfo(verbatim: message)
             }
+            removeFinishedOperProgressPlans(coreID: info.taskid)
 
         case "OperProgressDetail" where info.taskchain == "OperProgress":
             guard let detail = OperProgressDetailDetails(json: info.details, context: info.what) else {
                 return
             }
-            var lines = ["干员培养 \(detail.name)：\(detail.result ?? "")"]
-            if let elite = detail.elite {
-                lines.append(String(localized: "精英化 \(elite)"))
-            }
-            if let level = detail.skill_level {
-                lines.append(String(localized: "技能等级 \(level)"))
-            }
-            if let mastery = detail.skill_mastery {
-                for (skill, value) in mastery.enumerated() where value > 0 {
-                    lines.append(String(localized: "技能 \(skill + 1) 专精 \(value)"))
-                }
-            }
-            logInfo(verbatim: lines.joined(separator: "\n"))
+            consumeOperProgressDetail(detail, coreID: info.taskid)
 
         case "PixelPaintProgress":
             // TODO: (LogStyle) Apply the current palette color to progress logs.
@@ -1696,5 +1685,102 @@ extension MAAViewModel {
         } else {
             return nil
         }
+    }
+
+    // MARK: - 干员培养回调消费（对齐 WPF OperProgressTaskUserControlModel）
+
+    /// Summary 后移除已完成条目并触发配置页重建（WPF `RemoveFinishedPlans` → `RefreshUI`）。
+    /// 完成判据=该条目全维度清零（elite/skillLevel/专精全 0），不是 success 计数。
+    private func removeFinishedOperProgressPlans(coreID: Int32?) {
+        guard let id = taskID(coreID: coreID),
+            case .operProgress(var config) = tasks[id]
+        else {
+            return
+        }
+
+        let unfinished = config.plans.filter { plan in
+            plan.elite != 0 || plan.skillLevel != 0 || plan.skillMastery.contains { $0 > 0 }
+        }
+        if unfinished.count != config.plans.count {
+            config.plans = unfinished
+            tasks[id] = config.projectedTask
+        }
+        // 无论是否有条目被移除都重建：Detail 写回清零过的残余条目需要同步进卡片
+        operProgressRefreshToken += 1
+    }
+
+    /// Detail 回调：达成维度清零写回配置并持久化（WPF `ProcOperProgressMsg`——
+    /// 不实时刷 UI，刷新统一在 Summary 之后由 `removeFinishedOperProgressPlans` 触发）。
+    private func consumeOperProgressDetail(_ detail: OperProgressDetailDetails, coreID: Int32?) {
+        let callbackRole = detail.role.flatMap(OperProgressRole.init(rawValue:))
+        guard let id = taskID(coreID: coreID),
+            case .operProgress(var config) = tasks[id]
+        else {
+            logError(verbatim: "干员培养回调查不到对应任务配置")
+            return
+        }
+
+        // 匹配条目：先按职业+名字，退化为仅名字（对齐 WPF 两段 FirstOrDefault）
+        guard let index = config.plans.firstIndex(where: { $0.role == callbackRole && $0.name == detail.name })
+            ?? config.plans.firstIndex(where: { $0.name == detail.name })
+        else {
+            logError(verbatim: "干员培养回调找不到匹配的计划条目：\(detail.name)")
+            return
+        }
+
+        var plan = config.plans[index]
+        var isModified = false
+        if let elite = detail.elite, elite >= plan.elite {
+            plan.elite = 0
+            isModified = true
+        }
+        if let skillLevel = detail.skill_level, skillLevel >= plan.skillLevel {
+            plan.skillLevel = 0
+            isModified = true
+        }
+        if let mastery = detail.skill_mastery {
+            var spec = plan.skillMastery
+            var specChanged = false
+            for skill in 0..<min(3, mastery.count) where mastery[skill] >= spec[skill] {
+                spec[skill] = 0
+                specChanged = true
+            }
+            if specChanged {
+                plan.skillMastery = spec
+                isModified = true
+            }
+        }
+        if isModified {
+            config.plans[index] = plan
+            tasks[id] = config.projectedTask
+        }
+
+        // 日志：干员培养 {序号}:{本地化干员名} {status}（+ 各维度目标行）
+        let statusText: String
+        switch detail.result {
+        case "Success":
+            statusText = String(localized: "成功")
+        case "Failed":
+            statusText = String(localized: "失败")
+        case "Skipped":
+            statusText = String(localized: "跳过")
+        default:
+            statusText = detail.result ?? ""
+        }
+        let operName = OperProgressOperatorDirectory.shared
+            .findOperator(named: detail.name, role: callbackRole)?.displayName ?? detail.name
+        var lines = [String(localized: "干员培养 \(index + 1):\(operName) \(statusText)")]
+        if let elite = detail.elite {
+            lines.append(String(localized: "精英化 \(elite)"))
+        }
+        if let level = detail.skill_level {
+            lines.append(String(localized: "技能等级 \(level)"))
+        }
+        if let mastery = detail.skill_mastery {
+            for (skill, value) in mastery.enumerated() where value > 0 {
+                lines.append(String(localized: "技能 \(skill + 1) 专精 \(value)"))
+            }
+        }
+        logInfo(verbatim: lines.joined(separator: "\n"))
     }
 }

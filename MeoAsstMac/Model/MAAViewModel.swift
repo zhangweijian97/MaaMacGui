@@ -47,6 +47,11 @@ import SwiftUI
     @Published var taskIDMap: [Int32: UUID] = [:]
     @Published var newTaskAdded = false
 
+    /// 干员培养配置页重建令牌：Summary 回调消费（移除已完成条目）后自增，
+    /// 配置页据此整体重建卡片（对齐 WPF `RemoveFinishedPlans → RefreshUI`——
+    /// Detail 期间只改配置不刷 UI，刷新统一发生在 Summary 之后）。
+    @Published var operProgressRefreshToken = 0
+
     enum TaskStatus: Equatable {
         case cancel
         case failure
