@@ -20,6 +20,8 @@ struct OperProgressSettingsView: View {
     @State private var selectedOperator: OperProgressOperator?
     /// 选中后收起建议列表；再次编辑搜索文本时恢复。
     @State private var suggestionsDismissed = false
+    /// 搜索框聚焦态：聚焦即展开建议列表（对齐 WPF ComboBox 点开即浏览全量）。
+    @FocusState private var pickerFocused: Bool
     /// 展开的卡片集合（「全部折叠」与删除时同步清理）。
     @State private var expandedPlans: Set<UUID> = []
 
@@ -91,33 +93,54 @@ struct OperProgressSettingsView: View {
 
     // MARK: - 干员选择
 
+    /// 点开（聚焦）即浏览全量干员，输入即时过滤；选中后收起建议并在框内左侧
+    /// 显示已选干员头像（对齐 WPF 可搜索 ComboBox：DropDownOpened 清过滤展示全量
+    /// xaml:70-104 + 收起态头像浮层贴框内左侧）。
     private var operatorPicker: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                TextField("搜索干员", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                    .onChange(of: searchText) { _, newValue in
-                        if newValue != selectedOperator?.selectionTitle {
-                            selectedOperator = nil
-                            suggestionsDismissed = false
-                        }
-                    }
+                operatorField
                 Button("添加") {
                     addOperator()
                 }
                 .disabled(selectedOperator == nil)
             }
 
-            if !matches.isEmpty {
+            if pickerFocused, !matches.isEmpty {
                 suggestionList
             }
         }
     }
 
+    private var operatorField: some View {
+        HStack(spacing: 6) {
+            if let oper = selectedOperator {
+                OperProgressAvatar(id: oper.id, size: 16)
+            }
+            TextField("搜索干员", text: $searchText)
+                .textFieldStyle(.plain)
+                .focused($pickerFocused)
+                .onChange(of: searchText) { _, newValue in
+                    if newValue != selectedOperator?.selectionTitle {
+                        selectedOperator = nil
+                        suggestionsDismissed = false
+                    }
+                }
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(pickerFocused ? Color.accentColor : Color.gray.opacity(0.25), lineWidth: 1)
+        )
+    }
+
     private var matches: [OperProgressOperator] {
         guard !suggestionsDismissed else { return [] }
         let query = searchText.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return [] }
+        // 空查询即全量浏览（对齐 WPF：点开下拉展示完整列表，非必须先输入）
+        guard !query.isEmpty else { return directory.all }
         return directory.all.filter {
             $0.selectionTitle.localizedCaseInsensitiveContains(query) || $0.name.contains(query)
         }
@@ -144,7 +167,7 @@ struct OperProgressSettingsView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: min(CGFloat(matches.count) * 24 + 8, 200))
+        .frame(height: min(CGFloat(matches.count) * 24 + 8, 240))
         .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
     }
