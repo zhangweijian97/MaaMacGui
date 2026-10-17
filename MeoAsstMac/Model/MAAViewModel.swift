@@ -643,7 +643,7 @@ extension MAAViewModel {
         var plans = [TaskPlan]()
 
         for task in tasks {
-            guard task.enabled else { continue }
+            guard task.enabled, !task.task.isEmptyConfiguration else { continue }
 
             guard case .userdataupdate(var config) = task.task else {
                 // 自定任务未填写任务名时跳过，避免向核心提交空的任务链

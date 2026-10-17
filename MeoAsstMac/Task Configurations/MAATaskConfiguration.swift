@@ -49,6 +49,8 @@ extension MAAHandle {
             return [try appendTask(config: config)]
         case .mall(let config):
             return [try appendTask(config: config)]
+        case .operProgress(let config):
+            return [try appendTask(config: config)]
         case .award(let config):
             return [try appendTask(config: config)]
         case .switchTheme(let config):

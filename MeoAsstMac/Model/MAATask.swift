@@ -14,6 +14,7 @@ enum MAATask: Codable, Equatable {
     case infrast(InfrastConfiguration)
     case fight(FightConfiguration)
     case mall(MallConfiguration)
+    case operProgress(OperProgressConfiguration)
     case award(AwardConfiguration)
     case switchTheme(SwitchThemeConfiguration)
     case userdataupdate(UserDataUpdateConfiguration)
@@ -28,6 +29,7 @@ let defaultTaskConfigurations: [any MAATaskConfiguration] = [
     InfrastConfiguration(),
     FightConfiguration(),
     MallConfiguration(),
+    OperProgressConfiguration(),
     AwardConfiguration(),
     SwitchThemeConfiguration(),
     RoguelikeConfiguration(),
@@ -52,6 +54,8 @@ extension MAATaskType: Codable, CustomStringConvertible {
             return String(localized: "刷理智")
         case .Mall:
             return String(localized: "收取信用及购物")
+        case .OperProgress:
+            return String(localized: "干员培养")
         case .Award:
             return String(localized: "领取奖励")
         case .SwitchTheme:
@@ -77,6 +81,16 @@ extension MAATaskType: Codable, CustomStringConvertible {
         case .Custom:
             return String(localized: "自定任务")
         }
+    }
+}
+
+extension MAATask {
+    /// 没有实际内容的配置不追加到 core（对齐 WPF：计划为空的干员培养任务不下发）。
+    var isEmptyConfiguration: Bool {
+        if case .operProgress(let config) = self {
+            return config.plans.isEmpty
+        }
+        return false
     }
 }
 

@@ -913,6 +913,23 @@ private struct FightTimesDetails {
     let finished: Bool?
 }
 
+@JSONRepresentable
+private struct OperProgressSummaryDetails {
+    let success: Int
+    let failed: Int
+    let skipped: Int
+}
+
+@JSONRepresentable
+private struct OperProgressDetailDetails {
+    let role: String?
+    let name: String
+    let elite: Int?
+    let skill_level: Int?
+    let skill_mastery: [Int]?
+    let result: String?
+}
+
 private let sanityReportTimeParser = Date.ParseStrategy(
     format:
         "\(year: .defaultDigits)-\(month: .twoDigits)-\(day: .twoDigits) \(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)):\(minute: .twoDigits):\(second: .twoDigits).\(secondFraction: .fractional(3))",
@@ -1564,6 +1581,36 @@ extension MAAViewModel {
             } else {
                 logTrace(.miniGameAutoRaisePotentialNoPotentialLog(current: current, total: total))
             }
+
+        case "OperProgressSummary" where info.taskchain == "OperProgress":
+            guard let summary = OperProgressSummaryDetails(json: info.details, context: info.what) else {
+                return
+            }
+            let message = String(
+                localized: "干员培养完成：成功 \(summary.success)，失败 \(summary.failed)，跳过 \(summary.skipped)")
+            if summary.failed > 0 {
+                logWarn(verbatim: message)
+            } else {
+                logInfo(verbatim: message)
+            }
+
+        case "OperProgressDetail" where info.taskchain == "OperProgress":
+            guard let detail = OperProgressDetailDetails(json: info.details, context: info.what) else {
+                return
+            }
+            var lines = ["干员培养 \(detail.name)：\(detail.result ?? "")"]
+            if let elite = detail.elite {
+                lines.append(String(localized: "精英化 \(elite)"))
+            }
+            if let level = detail.skill_level {
+                lines.append(String(localized: "技能等级 \(level)"))
+            }
+            if let mastery = detail.skill_mastery {
+                for (skill, value) in mastery.enumerated() where value > 0 {
+                    lines.append(String(localized: "技能 \(skill + 1) 专精 \(value)"))
+                }
+            }
+            logInfo(verbatim: lines.joined(separator: "\n"))
 
         case "PixelPaintProgress":
             // TODO: (LogStyle) Apply the current palette color to progress logs.
