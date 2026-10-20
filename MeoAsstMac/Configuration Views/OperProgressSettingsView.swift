@@ -63,6 +63,21 @@ struct OperProgressSettingsView: View {
             }
             .padding()
         }
+        // 失焦收起下拉（走查#3，goal-cbe1e6）——下拉显隐本就绑定 pickerFocused，
+        // 这里补两条标准 macOS 失焦路径：① ESC 经 onExitCommand 退出焦点；
+        // ② 点空白经容器点击层退出焦点（交互控件各自消费点击，不经过此层，
+        // 已验收的「点开即浏览全量 / 选中后收起显示头像」不受影响）。
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if pickerFocused {
+                pickerFocused = false
+            }
+        }
+        .onExitCommand {
+            if pickerFocused {
+                pickerFocused = false
+            }
+        }
         .onAppear {
             reloadDirectoryIfNeeded()
         }
