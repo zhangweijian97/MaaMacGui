@@ -341,6 +341,8 @@ private struct OperProgressPlanCard: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // overlay 设计前提：浮现时恒最上层（走查#2，goal-cbe1e6）——显式 zIndex 抬升
+            // 删除按钮及其悬浮容器，高于同层徽标区/文本区（默认 0），不依赖布局预留位巧合。
             .overlay(alignment: .trailing) {
                 if isHovered {
                     Button {
@@ -351,8 +353,10 @@ private struct OperProgressPlanCard: View {
                     }
                     .buttonStyle(.plain)
                     .help("删除")
+                    .zIndex(1)
                 }
             }
+            .zIndex(1)
         }
         .onHover { hovering in
             isHovered = hovering
