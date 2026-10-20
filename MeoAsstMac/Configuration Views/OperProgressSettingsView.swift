@@ -275,7 +275,7 @@ private struct OperProgressPlanCard: View {
 
     // 编辑态：互斥规则住在纯逻辑模型里（goal-0729d7 可测性抽取），卡片只做呈现与转发。
     @State private var editor: OperProgressPlanEditor
-    /// 头部悬停态：悬停时徽标区隐、删除按钮现（对齐 WPF 两处 IsMouseOver 触发器）。
+    /// 头部悬停态：仅驱动删除按钮显隐（WPF 正本 xaml:299-324——IsMouseOver 触发器只挂删除按钮自身，徽标区常驻无悬停触发器）。
     @State private var isHovered = false
 
     init(
@@ -332,11 +332,11 @@ private struct OperProgressPlanCard: View {
                         .foregroundStyle(.secondary)
                     OperProgressAvatar(id: avatarID, size: 18)
                     Text(displayName)
-                    // 悬停时徽标区让位给删除按钮（对齐 WPF 徽标 Grid 的 IsMouseOver 隐显触发器）
-                    if !isHovered {
-                        targetSummary
-                    }
+                    targetSummary
                     Spacer(minLength: 8)
+                    // 尾部预留位：悬停浮现的删除按钮落在此区，不覆盖徽标（参照 WPF 删除按钮住独立 25pt Grid.Column 预留位）。
+                    Color.clear
+                        .frame(width: 25, height: 1)
                 }
                 .contentShape(Rectangle())
             }
