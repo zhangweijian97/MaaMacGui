@@ -181,7 +181,14 @@ enum OperProgressPlanParser {
     /// 解析工具箱导出的计划 JSON 数组（`[{"role":"Warrior","name":"陈","elite":2,...}]`）。
     /// 未知键忽略正常导入（对齐 WPF cs:376-395——工具箱导出带额外字段时不整单拒绝）；
     /// `role` 缺失或非法时按干员数据反查补全；名字缺失或查无即整体报错。
-    static func parse(_ text: String) throws -> [OperProgressPlan] {
+    ///
+    /// - Parameter directory: 反查用的干员目录。生产调用不传，默认 `shared`
+    ///   （优先 `Documents/resource/battle_data.json`，缺失回退 Bundle）；测试显式注入
+    ///   空目录或夹具目录，使反查分支的断言不随宿主机是否落盘资源而变。
+    static func parse(
+        _ text: String,
+        directory: OperProgressOperatorDirectory.Directory = OperProgressOperatorDirectory.shared
+    ) throws -> [OperProgressPlan] {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             throw OperProgressParseError.invalidJSON("内容为空")
@@ -200,7 +207,6 @@ enum OperProgressPlanParser {
             throw OperProgressParseError.notArray
         }
 
-        let directory = OperProgressOperatorDirectory.shared
         var plans = [OperProgressPlan]()
         plans.reserveCapacity(items.count)
 
@@ -313,6 +319,13 @@ enum OperProgressOperatorDirectory {
         let all: [OperProgressOperator]
 
         private let byName: [String: [OperProgressOperator]]
+
+        /// 显式构造目录（internal）。生产只经 `load()`；测试用于注入夹具/空目录，
+        /// 不让断言依赖宿主机是否落盘 `battle_data.json`。
+        init(all: [OperProgressOperator], byName: [String: [OperProgressOperator]]) {
+            self.all = all
+            self.byName = byName
+        }
 
         static let empty = Directory(all: [], byName: [:])
 

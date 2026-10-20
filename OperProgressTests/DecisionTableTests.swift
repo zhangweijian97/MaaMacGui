@@ -38,10 +38,10 @@ final class DecisionTableTests: XCTestCase {
         (18, "同：其余", "direct"),
         (19, "数据未命中回退（SkillCount=3）", "direct+synthetic"),
         (20, "专精行按技能数收缩", "direct"),
-        (21, "role Unknown 补全", "synthetic（hostless 无干员数据，测近邻分支）"),
+        (21, "role Unknown 补全", "synthetic（显式空目录近邻分支；正向补全见行 24）"),
         (22, "三形态不可选", "direct+synthetic"),
         (23, "未知键忽略", "direct"),
-        (24, "role 解析失败按名补", "synthetic（hostless 无干员数据，测近邻分支）"),
+        (24, "role 解析失败按名补", "direct+synthetic（显式空目录报错/夹具目录按名补全）"),
         (25, "仍未知或无名 → 整次中止", "direct"),
         (26, "非法 JSON → 中止", "direct"),
         (27, "根节点必须是数组", "direct"),
@@ -78,6 +78,7 @@ final class DecisionTableTests: XCTestCase {
         XCTAssertEqual(Self.rowManifest.count, 54, "决策表 54 行应逐行登记")
         XCTAssertEqual(Set(Self.rowManifest.map(\.row)), Set(1...54), "行号应为 1...54 无缺漏")
     }
+
 
     // MARK: - A 节 等级↔专精互斥（行 1-12）
 
@@ -249,12 +250,13 @@ final class DecisionTableTests: XCTestCase {
         XCTAssertEqual(editor.masteryValues[2], 3, "数值保留在编辑态（仅 UI 禁用+产出裁剪）")
     }
 
-    /// 行 21（synthetic 近邻）：role 非法 → 按名反查目录；hostless 测试环境无
-    /// battle_data.json（目录空）→ 反查失败 → 整单中止。正向补全分支需干员数据资源，
-    /// 本 target 不覆盖（见报告遗留）。
+    /// 行 21（synthetic 近邻）：role 非法 → 按名反查目录；显式注入空目录（模拟无干员
+    /// 数据资源）→ 反查失败 → 整单中止。断言不依赖宿主机是否落盘 battle_data.json。
     func testRow21_SyntheticInvalidRoleFallsBackToDirectory() throws {
         XCTAssertThrowsError(
-            try OperProgressPlanParser.parse(#"[{"role":"Bogus","name":"测试","elite":2}]"#)
+            try OperProgressPlanParser.parse(
+                #"[{"role":"Bogus","name":"测试","elite":2}]"#,
+                directory: .empty)
         ) { error in
             XCTAssertTrue(
                 error is OperProgressParseError,
@@ -280,10 +282,31 @@ final class DecisionTableTests: XCTestCase {
         XCTAssertEqual(plans[0].elite, 2)
     }
 
-    /// 行 24（synthetic 近邻）：role 缺失 → 按名反查；hostless 无数据资源 → 报错。
-    /// 正向补全分支不覆盖（同行 21 遗留）。
+    /// 行 24（synthetic 近邻）：显式注入空目录（模拟无干员数据资源）→ role 缺失且
+    /// 按名反查失败 → 整单中止。断言不依赖宿主机是否落盘 battle_data.json。
     func testRow24_SyntheticMissingRoleFallsBackToDirectory() {
-        XCTAssertThrowsError(try OperProgressPlanParser.parse(#"[{"name":"陈","elite":2}]"#))
+        XCTAssertThrowsError(
+            try OperProgressPlanParser.parse(
+                #"[{"name":"陈","elite":2}]"#,
+                directory: .empty))
+    }
+
+    /// 行 24 正向（synthetic 夹具）：注入含「陈」的目录 → role 缺失时按名反查补全职业。
+    /// 覆盖原注释所称「需干员数据资源、本 target 不覆盖」的正向分支。
+    func testRow24_SyntheticMissingRoleBackfilledFromDirectory() throws {
+        let chen = OperProgressOperator(
+            id: "char_002_chen", name: "陈", displayName: "陈", role: .warrior,
+            rarity: 6, hasSameName: false)
+        let directory = OperProgressOperatorDirectory.Directory(
+            all: [chen], byName: [chen.name: [chen]])
+
+        let plans = try OperProgressPlanParser.parse(
+            #"[{"name":"陈","elite":2}]"#, directory: directory)
+
+        XCTAssertEqual(plans.count, 1)
+        XCTAssertEqual(plans[0].role, .warrior, "role 缺失 → 按名反查目录补全")
+        XCTAssertEqual(plans[0].name, "陈")
+        XCTAssertEqual(plans[0].elite, 2)
     }
 
     /// 行 25：无名 / 仍未知 → 整次中止（不部分导入）。
