@@ -5,7 +5,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>MAA Dev</string>
 	<key>CFBundleShortVersionString</key>
-	<string>6.20.0-beta.1</string>
+	<string>6.20.0</string>
 	<key>CFBundleVersion</key>
 	<string>1009</string>
 	<key>NSAppTransportSecurity</key>
