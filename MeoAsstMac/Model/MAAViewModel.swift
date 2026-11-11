@@ -216,6 +216,8 @@ import SwiftUI
         }
     }
 
+    @AppStorage("MAAUseWebGPU") var useWebGPU = false
+
     // MARK: - Third-Party Service Settings
 
     /// 一图流 OpenAPI Token，鉴权方式为请求头 Authorization 直接携带
@@ -298,6 +300,9 @@ extension MAAViewModel {
     func initialize() async throws {
         status = .pending
         try await MAAProvider.shared.setUserDirectory(path: Self.userDirectory.path)
+        if useWebGPU {
+            try await MAAProvider.shared.setStaticOption(key: 2, value: "webgpu:0")
+        }
         try await loadResource(channel: clientChannel)
         status = .idle
     }
