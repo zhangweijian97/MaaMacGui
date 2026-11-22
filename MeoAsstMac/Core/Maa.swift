@@ -207,9 +207,9 @@ actor MAAHandle {
 enum MAATaskType: String {
     case StartUp
     case CloseDown
+    case Fight
     case Recruit
     case Infrast
-    case Fight
     case Mall
     case OperProgress
     case Award
@@ -220,10 +220,11 @@ enum MAATaskType: String {
     case SSSCopilot
     case ParadoxCopilot
     case Depot
-    case Reclamation
-    case VideoRecognition
     case OperBox
+    case Reclamation
+    case StrongholdProtocol
     case Custom
+    case VideoRecognition
 }
 
 enum MaaCoreError: Error {

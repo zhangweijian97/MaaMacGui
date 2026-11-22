@@ -57,6 +57,11 @@ struct MiniGameView: View {
                         Toggle("中间信物不足时使用普通信物", isOn: $useNormalToken)
                     }
                 }
+            case "StrongholdProtocol":
+                LazyVStack {
+                    Text(selectedGame.instructions)
+                    StrongholdProtocolSettingsView(params: $taskParams)
+                }
             default:
                 ScrollView {
                     LazyVStack {
@@ -111,6 +116,7 @@ enum MiniGameOption: String, CaseIterable {
     case reclamationStore
     case autoRaisePotential
     case materialSynthesis
+    case strongholdProtocol
 
     var taskName: String {
         switch self {
@@ -126,6 +132,8 @@ enum MiniGameOption: String, CaseIterable {
             return "MiniGame@AutoRaisePotential@Begin"
         case .materialSynthesis:
             return "MiniGame@MaterialSynthesis@Begin"
+        case .strongholdProtocol:
+            return "StrongholdProtocol"
         }
     }
 
@@ -143,6 +151,8 @@ enum MiniGameOption: String, CaseIterable {
             return String(localized: "自动提升潜能")
         case .materialSynthesis:
             return String(localized: "缺口材料合成")
+        case .strongholdProtocol:
+            return String(localized: "卫戍协议")
         }
     }
 
@@ -188,6 +198,14 @@ enum MiniGameOption: String, CaseIterable {
                     """
                     请先手动从培养页面(如精英化、专精、模组升级)缺少的材料弹窗跳转到加工站合成页，再开始任务。
                     会递归合成可加工的下级材料，材料不足时停止。
+                    """)
+        case .strongholdProtocol:
+            String(
+                localized:
+                    """
+                    请使用活动默认皮肤，
+                    在有“极速模拟”的活动主界面开始任务。
+                    已有存档时，请先手动放弃。
                     """)
         }
     }
