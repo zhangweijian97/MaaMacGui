@@ -5,9 +5,9 @@
 	<key>CFBundleDisplayName</key>
 	<string>MAA Dev</string>
 	<key>CFBundleShortVersionString</key>
-	<string>6.23.1</string>
+	<string>6.23.2</string>
 	<key>CFBundleVersion</key>
-	<string>1049</string>
+	<string>1051</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>
